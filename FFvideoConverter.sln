@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32516.85
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FFvideoConverter", "FFvideoConverter\FFvideoConverter.csproj", "{BE676A40-809C-44F2-BFC2-6443712309F0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Debug|x64.ActiveCfg = Debug|x64
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Debug|x64.Build.0 = Debug|x64
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Release|x64.ActiveCfg = Release|x64
+		{BE676A40-809C-44F2-BFC2-6443712309F0}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BFC0245E-CC17-4899-A475-05634A3F0A94}
+	EndGlobalSection
+EndGlobal
