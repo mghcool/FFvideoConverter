@@ -6,7 +6,6 @@
     <Nullable>disable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon>icon.ico</ApplicationIcon>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
@@ -35,10 +34,6 @@
   <ItemGroup>
 	<EmbeddedResource Include="www\*" />
 	<EmbeddedResource Include="www\js\*" />
-  </ItemGroup>
-	
-  <ItemGroup>
-    <Content Include="icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
