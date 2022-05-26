@@ -88,7 +88,7 @@
 </style>
 
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
 import { ElMessageBox, ElMessage } from 'element-plus'
 const inputFile = ref('')
 const outputPath = ref('')
@@ -111,6 +111,16 @@ const audioArgs = ref({
     m3: { label: '码率', selected: '', list: ['1', '2', '3'] },
     m4: { label: '频率', selected: '', list: ['16000Hz', '2', '3'] },
     m5: { label: '音量', selected: '', list: ['1', '2', '3'] },
+})
+
+/* mounted *************************************************/
+onMounted(() => {
+    Object.keys(videoArgs.value).forEach(key => {
+        videoArgs.value[key].selected = videoArgs.value[key].list[0]
+    })
+    Object.keys(audioArgs.value).forEach(key => {
+        audioArgs.value[key].selected = audioArgs.value[key].list[0]
+    })
 })
 
 /* method *************************************************/
@@ -162,7 +172,7 @@ const onConvert = () => {
         OutType: videoType.value,
         CopyType: copyType
     }
-    
+
     new Promise(Formium.external.SharpObject.VideoConvert(JSON.stringify(config)))
         .then(ret => {
             ElMessageBox.alert(ret, '提示', {
