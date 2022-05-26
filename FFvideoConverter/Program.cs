@@ -11,7 +11,7 @@ namespace FFvideoConverter
                 env.CustomCefSettings(settings =>
                 {
                     // 在此处设置 CEF 的相关参数
-                    settings.CachePath = "./cache"; 
+                    settings.CachePath = Path.Combine(Directory.GetCurrentDirectory(), "cache"); 
                     settings.Locale = "zh-CN";
                     settings.AcceptLanguageList = "zh-CN";
                 });
