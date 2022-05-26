@@ -102,10 +102,12 @@ namespace FFvideoConverter
                 {
                     if(config.CopyType == FFCopyType.Video)
                     {
+                        videoStream = videoStream.CopyStream();
                         audioStream.SetCodec(AudioCodec.aac);
                     }
                     if (config.CopyType == FFCopyType.Audio)
                     {
+                        audioStream = audioStream.CopyStream();
                         videoStream.SetCodec(VideoCodec.h264);
                     }
                 }
