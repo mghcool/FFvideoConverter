@@ -1,5 +1,5 @@
-﻿using FFMpegCore;
-using FFMpegCore.Enums;
+﻿using System.Diagnostics;
+using Xabe.FFmpeg;
 
 namespace FFvideoConverter
 {
@@ -17,6 +17,22 @@ namespace FFvideoConverter
         public string OutputPath;
         public string OutType;
         public FFCopyType CopyType;
+        public FFVideoConfig VideoConfig;
+        public FFAudioConfig AudioConfig;
+    }
+
+    public struct FFVideoConfig
+    {
+        public string CodecName;    // 编码
+        public double FrameRate;    // 帧率
+
+    }
+
+    public struct FFAudioConfig
+    {
+        public string CodecName;    // 编码
+        public int BitRate;         // 比特率
+        public int SampleRateHz;    // 采样率
     }
 
     public class FFmpegHelper
@@ -38,7 +54,33 @@ namespace FFvideoConverter
         /// </summary>
         public FFmpegHelper()
         {
-            GlobalFFOptions.Configure(new FFOptions { BinaryFolder = "./FFmpeg", TemporaryFilesFolder = "/tmp" });
+            FFmpeg.SetExecutablesPath("./FFmpeg");
+        }
+
+        /// <summary>
+        /// 获取媒体信息
+        /// </summary>
+        /// <param name="file">媒体路径</param>
+        /// <returns>媒体信息</returns>
+        public FFConvertConfig GetMediaInfo(string file)
+        {
+            IMediaInfo mediaInfo = FFmpeg.GetMediaInfo(file).Result;
+            IStream videoStream = mediaInfo.VideoStreams.FirstOrDefault();
+            IStream audioStream = mediaInfo.AudioStreams.FirstOrDefault();
+
+            FFVideoConfig videoInfo = new FFVideoConfig
+            {
+                CodecName = videoStream.Codec.ToUpper(),
+            };
+            FFAudioConfig audioInfo = new FFAudioConfig
+            {
+                CodecName = audioStream.Codec.ToUpper(),
+            };
+            return new FFConvertConfig
+            {
+                VideoConfig = videoInfo,
+                AudioConfig = audioInfo,
+            };
         }
 
         /// <summary>
@@ -51,18 +93,45 @@ namespace FFvideoConverter
             if (config.InputFile == string.Empty || config.OutputPath == string.Empty) return false;
             string outFilename = $"{Path.GetFileNameWithoutExtension(config.InputFile)}.{config.OutType}";
             string outputFile = Path.Combine(config.OutputPath, outFilename);
-            IMediaAnalysis mediaInfo = FFProbe.Analyse(config.InputFile);
-            return FFMpegArguments
-            .FromFileInput(config.InputFile)
-            .OutputToFile(outputFile, true
-            , options => {
-                if(config.CopyType != FFCopyType.None) options.CopyChannel((Channel)config.CopyType);
-            })
-            .NotifyOnProgress((double progress) => {
-                ConvertProgress = progress;
-                OnConvertProgress?.Invoke(progress);
-            }, mediaInfo.Duration)
-            .ProcessSynchronously();
+            try
+            {
+                IMediaInfo mediaInfo = FFmpeg.GetMediaInfo(config.InputFile).Result;
+                IVideoStream videoStream = mediaInfo.VideoStreams.FirstOrDefault();
+                IAudioStream audioStream = mediaInfo.AudioStreams.FirstOrDefault();
+                if(config.CopyType != FFCopyType.Both)
+                {
+                    if(config.CopyType == FFCopyType.Video)
+                    {
+                        audioStream.SetCodec(AudioCodec.aac);
+                    }
+                    if (config.CopyType == FFCopyType.Audio)
+                    {
+                        videoStream.SetCodec(VideoCodec.h264);
+                    }
+                }
+                else
+                {
+                    videoStream = videoStream.CopyStream();
+                    audioStream = audioStream.CopyStream();
+                }
+                IConversion conversion = FFmpeg.Conversions.New();
+                conversion.AddStream(audioStream, (IStream)videoStream);               
+                conversion.SetOutput(outputFile);
+                conversion.SetOverwriteOutput(true);
+                //conversion.UseMultiThread(16);  // 多线程，默认应该是cpu的核心数
+                conversion.OnProgress += (sender, args) =>
+                {
+                    ConvertProgress = args.Percent;
+                    OnConvertProgress?.Invoke(ConvertProgress);
+                };
+                IConversionResult ret = conversion.Start().Result;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                return false;
+            }
         }
 
         /// <summary>

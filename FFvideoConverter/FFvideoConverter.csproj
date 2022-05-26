@@ -27,9 +27,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FFMpegCore" Version="4.4.0" />
     <PackageReference Include="NetDimension.NanUI" Version="0.9.90.130" />
     <PackageReference Include="NetDimension.NanUI.Runtime" Version="90.6.7.1" />
+    <PackageReference Include="Xabe.FFmpeg" Version="4.4.0" />
   </ItemGroup>
 	
   <ItemGroup>
