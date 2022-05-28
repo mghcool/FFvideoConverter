@@ -2,7 +2,7 @@
     <br />
     <el-row :gutter="15">
         <el-col :span="20">
-            <el-input v-model="inputFile" placeholder="选择视频文件" />
+            <el-input v-model="inputFile" placeholder="选择视频文件" readonly />
         </el-col>
         <el-col :span="4" style="text-align: center;">
             <el-button type="primary" icon="VideoCamera" @click="onOpenFile">选择视频文件</el-button>
@@ -10,7 +10,7 @@
     </el-row><br />
     <el-row :gutter="15">
         <el-col :span="20">
-            <el-input v-model="outputPath" placeholder="选择生成目录" />
+            <el-input v-model="outputPath" placeholder="选择生成目录" readonly />
         </el-col>
         <el-col :span="4" style="text-align: center;">
             <el-button type="primary" icon="FolderOpened" @click="onFolderBrowser">选择生成目录</el-button>
@@ -19,7 +19,9 @@
     <br />
 
     <el-row :gutter="15">
-        <el-col :span="1"></el-col>
+        <el-col :span="2">
+            <el-button type="primary" link @click="showMediaInfo = !showMediaInfo">媒体信息</el-button>
+        </el-col>
         <el-col :span="5">
             <el-form-item label="转码到：">
                 <el-select v-model="videoType" placeholder="转码类型">
@@ -33,13 +35,15 @@
                 <el-switch v-model="videoCopy" />
             </el-form-item>
         </el-col>
-        <el-col :span="7">
+        <el-col :span="6">
             <el-form-item label="复制源音频参数">
                 <el-switch v-model="audioCopy" />
             </el-form-item>
         </el-col>
         <el-col :span="4" style="text-align: center;">
-            <el-button type="warning" icon="Switch" size="large" @click="onConvert">开始转码</el-button>
+            <el-button v-if="!startConvert" type="success" icon="Sort" size="large" @click="onStartConvert">开始转码
+            </el-button>
+            <el-button v-else type="warning" icon="SwitchButton" size="large" @click="onStopConvert">停止转码</el-button>
         </el-col>
     </el-row>
 
@@ -77,6 +81,17 @@
             </el-card>
         </el-col>
     </el-row>
+
+    <el-dialog v-model="showMediaInfo" title="媒体信息" width="60%" top="50px">
+        <el-row class="tabBarArea">
+            <el-col v-for="(item, index) in mediaInfo" :span="8">
+                <div class="tabBarBtn" :class="[tabName == index ? 'tabBarBtnActive' : '']" @click="tabName = index">{{item.label}}
+                </div>
+            </el-col>
+        </el-row>
+        <el-input v-model="mediaInfo[tabName].content" type="textarea" :rows="18" resize="none" wrap="off" readonly
+            placeholder="没有有效数据！" />
+    </el-dialog>
 </template>
 
 <style lang="scss" scoped>
@@ -85,18 +100,95 @@
     justify-content: space-between;
     align-items: center;
 }
+
+.tabBarArea {
+    position: relative;
+    background-color: #f5f7fa;
+    cursor: pointer;
+}
+
+
+.tabBarBtn {
+    width: 100%;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    box-sizing: border-box;
+    font-size: 14px;
+    border: solid 1px #dcdfe6;
+}
+
+.tabBarBtn:hover {
+    color: #326BE8;
+    border-bottom: solid 1px #dcdfe6;
+    border-top: solid 1px #dcdfe6;
+    border-left: solid 1px #dcdfe6;
+    border-right: solid 1px #dcdfe6;
+}
+
+.tabBarBtnActive {
+    color: #326BE8;
+    background-color: #fff;
+    border-bottom: 2px solid #326BE8;
+    border-top: solid 1px #dcdfe6;
+    border-left: solid 1px #dcdfe6;
+    border-right: solid 1px #dcdfe6;
+}
+
+.tabBarBtnActive:hover {
+    color: #326BE8;
+    border-bottom: 2px solid #326BE8;
+    border-top: solid 1px #dcdfe6;
+    border-left: solid 1px #dcdfe6;
+    border-right: solid 1px #dcdfe6;
+}
+</style>
+
+<style>
+.el-dialog__body {
+    padding: 10px 20px 20px 20px;
+}
+
+.el-tabs__content {
+    padding: 0px !important;
+}
+
+.el-textarea__inner {
+    box-shadow: 0px 0px 0px 0px;
+    border-style: none solid solid solid;
+    border-width: 1px;
+    border-color: #dcdfe6;
+}
 </style>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, toRaw, computed, onMounted } from "vue"
 import { ElMessageBox, ElMessage } from 'element-plus'
+
+/* data *************************************************/
 const inputFile = ref('')
 const outputPath = ref('')
-const videoTypeList = ref(['MP4', 'MKV', 'AVI', 'TS'])
+const videoTypeList = ref(['MP4', 'AVI', 'MPEG', 'MOV', 'MKV', '3GP', 'WMV', 'FLV', 'MPG', 'AV1', 'OGV'])
 const videoType = ref(videoTypeList.value[0])
 const videoCopy = ref(true)
 const audioCopy = ref(true)
-
+const startConvert = ref(false)
+const showMediaInfo = ref(false)
+const tabName = ref('video')
+const mediaInfo = ref({
+    video: {
+        label: '视频',
+        content: ''
+    },
+    audio: {
+        label: '音频',
+        content: ''
+    },
+    subtitle: {
+        label: '字幕',
+        content: ''
+    }
+})
 const videoArgs = ref({
     m1: { label: '编解码器', selected: '', list: ['H.264', 'H.265', 'MPGE-1', 'MPGE-2'] },
     m2: { label: '帧率', selected: '', list: ['25fps', '30fps', '60fps'] },
@@ -104,7 +196,6 @@ const videoArgs = ref({
     m4: { label: '级别', selected: '', list: ['1', '2', '3'] },
     m5: { label: '质量', selected: '', list: ['1', '2', '3'] },
 })
-
 const audioArgs = ref({
     m1: { label: '编解码器', selected: '', list: ['AAC', 'AC3'] },
     m2: { label: '声道', selected: '', list: ['25fps', '30fps', '60fps'] },
@@ -124,17 +215,20 @@ onMounted(() => {
 })
 
 /* method *************************************************/
-const onOpenFile = () => {
+const onOpenFile = () => {      // 打开文件
     new Promise(Formium.external.SharpObject.OpenFile())
         .then(ret => {
-            inputFile.value = ret
+            inputFile.value = ret[0]
+            mediaInfo.value.video.content = ret[1]
+            mediaInfo.value.audio.content = ret[2]
+            mediaInfo.value.subtitle.content = ret[3]
         })
         .catch(err => {
             console.log(err)
         })
 }
 
-const onFolderBrowser = () => {
+const onFolderBrowser = () => {     // 打开文件夹
     new Promise(Formium.external.SharpObject.FolderBrowser())
         .then(ret => {
             outputPath.value = ret
@@ -144,7 +238,7 @@ const onFolderBrowser = () => {
         })
 }
 
-const onConvert = () => {
+const onStartConvert = () => {      // 开始转换
     if (typeof Formium == "undefined") return
     if (inputFile.value == '') {
         ElMessage({
@@ -172,8 +266,8 @@ const onConvert = () => {
         OutType: videoType.value,
         CopyType: copyType
     }
-
-    new Promise(Formium.external.SharpObject.VideoConvert(JSON.stringify(config)))
+    startConvert.value = true
+    new Promise(Formium.external.SharpObject.StartConvert(JSON.stringify(config)))
         .then(ret => {
             ElMessageBox.alert(ret, '提示', {
                 confirmButtonText: '确认',
@@ -181,9 +275,38 @@ const onConvert = () => {
                     Formium.external.SharpObject.Progress = 0
                 },
             })
+            startConvert.value = false
         })
         .catch(err => {
             console.log(err)
+            ElMessage({
+                message: err,
+                type: 'error',
+            })
+            startConvert.value = false
+        })
+}
+
+const onStopConvert = () => {       // 停止转换
+    ElMessageBox.confirm(
+        '确定停止视频转码？',
+        '操作警告',
+        {
+            confirmButtonText: '确认',
+            cancelButtonText: '离开',
+            type: 'warning',
+        }
+    )
+        .then(() => {
+            if (startConvert.value == false) return
+            new Promise(Formium.external.SharpObject.StopConvert())
+                .then(ret => {
+                    ElMessage({
+                        message: ret,
+                        type: 'warning',
+                    })
+                    startConvert.value = false
+                })
         })
 }
 </script>

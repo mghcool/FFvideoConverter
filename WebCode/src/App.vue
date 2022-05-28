@@ -67,4 +67,6 @@ $height-footer: 35px;   // 底栏高度
 
 <script setup>
 import ConvertProgress  from '@/components/ConvertProgress.vue'
+//document.ondragstart = function () { return false; }; //禁用拖动
+//document.onselectstart = function () { return false; }; //禁用文字选中
 </script>

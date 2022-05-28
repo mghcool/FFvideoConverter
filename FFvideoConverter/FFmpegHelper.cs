@@ -1,4 +1,8 @@
-﻿using System.Diagnostics;
+﻿/*************************************************
+ * 参考文档：https://ffmpeg.xabe.net/docs.html
+ * ***********************************************/
+using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 using Xabe.FFmpeg;
 
 namespace FFvideoConverter
@@ -47,6 +51,7 @@ namespace FFvideoConverter
         /// 转码进度响应事件
         /// </summary>
         public event Action<double> OnConvertProgress;
+        private CancellationTokenSource CancelToken;
         #endregion
 
         /// <summary>
@@ -61,26 +66,16 @@ namespace FFvideoConverter
         /// 获取媒体信息
         /// </summary>
         /// <param name="file">媒体路径</param>
-        /// <returns>媒体信息</returns>
-        public FFConvertConfig GetMediaInfo(string file)
+        /// <returns>[0]是视频信息，[1]是音频信息</returns>
+        public string[] GetMediaInfo(string file)
         {
-            IMediaInfo mediaInfo = FFmpeg.GetMediaInfo(file).Result;
-            IStream videoStream = mediaInfo.VideoStreams.FirstOrDefault();
-            IStream audioStream = mediaInfo.AudioStreams.FirstOrDefault();
-
-            FFVideoConfig videoInfo = new FFVideoConfig
-            {
-                CodecName = videoStream.Codec.ToUpper(),
-            };
-            FFAudioConfig audioInfo = new FFAudioConfig
-            {
-                CodecName = audioStream.Codec.ToUpper(),
-            };
-            return new FFConvertConfig
-            {
-                VideoConfig = videoInfo,
-                AudioConfig = audioInfo,
-            };
+            string videoInfo = Probe.New().Start($"-hide_banner -pretty -show_streams -select_streams v {file}").Result;
+            string audioInfo = Probe.New().Start($"-hide_banner -pretty -show_streams -select_streams a {file}").Result;
+            string subtitleInfo = Probe.New().Start($"-hide_banner -pretty -show_streams -select_streams s {file}").Result;
+            videoInfo = videoInfo.Replace("[STREAM]\r\n", "").Replace("[/STREAM]", "");
+            audioInfo = audioInfo.Replace("[STREAM]\r\n", "").Replace("[/STREAM]", "");
+            subtitleInfo = subtitleInfo.Replace("[STREAM]\r\n", "").Replace("[/STREAM]", "");
+            return new string[] { videoInfo, audioInfo, subtitleInfo };
         }
 
         /// <summary>
@@ -98,36 +93,51 @@ namespace FFvideoConverter
                 IMediaInfo mediaInfo = FFmpeg.GetMediaInfo(config.InputFile).Result;
                 IVideoStream videoStream = mediaInfo.VideoStreams.FirstOrDefault();
                 IAudioStream audioStream = mediaInfo.AudioStreams.FirstOrDefault();
-                if(config.CopyType != FFCopyType.Both)
-                {
-                    if(config.CopyType == FFCopyType.Video)
-                    {
-                        videoStream = videoStream.CopyStream();
-                        audioStream.SetCodec(AudioCodec.aac);
-                    }
-                    if (config.CopyType == FFCopyType.Audio)
-                    {
-                        audioStream = audioStream.CopyStream();
-                        videoStream.SetCodec(VideoCodec.h264);
-                    }
-                }
-                else
+                ISubtitleStream subtitleStream = mediaInfo.SubtitleStreams.FirstOrDefault();
+                if (config.CopyType == FFCopyType.Both)
                 {
                     videoStream = videoStream.CopyStream();
                     audioStream = audioStream.CopyStream();
                 }
+                else
+                {                   
+                    if (config.CopyType == FFCopyType.Video || config.CopyType == FFCopyType.None)
+                    {
+                        if (config.CopyType != FFCopyType.None) videoStream = videoStream.CopyStream();
+                        audioStream.SetCodec(AudioCodec.aac);
+                        //audioStream.SetBitrate(12000);
+                        //audioStream.SetChannels(1);
+                        //audioStream.SetSeek(TimeSpan.FromSeconds(5));
+                    }
+                    if (config.CopyType == FFCopyType.Audio || config.CopyType == FFCopyType.None)
+                    {
+                        if (config.CopyType != FFCopyType.None) audioStream = audioStream.CopyStream();
+                        videoStream.SetCodec(VideoCodec.h264);
+                        //videoStream.SetBitrate(12000);
+                        //videoStream.SetSize(VideoSize.Hd480);
+                    }
+                }
                 IConversion conversion = FFmpeg.Conversions.New();
                 conversion.AddStream(audioStream, (IStream)videoStream);               
                 conversion.SetOutput(outputFile);
-                conversion.SetOverwriteOutput(true);
+                conversion.SetOverwriteOutput(true); // 覆盖输出文件
                 //conversion.UseMultiThread(16);  // 多线程，默认应该是cpu的核心数
+                conversion.AddParameter("-hide_banner");    // 禁止显示版权声明，构建选项和库版本等信息
                 conversion.OnProgress += (sender, args) =>
                 {
                     ConvertProgress = args.Percent;
                     OnConvertProgress?.Invoke(ConvertProgress);
                 };
-                IConversionResult ret = conversion.Start().Result;
+                conversion.OnDataReceived += (sender, args) =>
+                {
+                    // 输出转码信息
+                    Debug.WriteLine(args.Data);
+                };
+                CancelToken = new CancellationTokenSource();
+                IConversionResult ret = conversion.Start(CancelToken.Token).Result;
+                Debug.WriteLine($"转码完成，使用参数：{ret.Arguments}");
                 return true;
+                //bool conversionResult = FFmpeg.Conversions.New().Start("args").IsFaulted; // 直接使用自定义参数
             }
             catch (Exception ex)
             {
@@ -141,5 +151,15 @@ namespace FFvideoConverter
         /// </summary>
         /// <param name="config">转码所需配置</param>
         public void ConvertAsync(FFConvertConfig config) => Task.Run(() => Convert(config));
+
+        /// <summary>
+        /// 取消转码
+        /// </summary>
+        public void CancelConvert()
+        {
+            CancelToken?.Cancel();
+            CancelToken?.Dispose();
+            CancelToken = null;
+        }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using NetDimension.NanUI;
 using NetDimension.NanUI.HostWindow;
 using NetDimension.NanUI.JavaScript;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace FFvideoConverter
@@ -88,7 +89,15 @@ namespace FFvideoConverter
                     file.Filter = "video|*.mp4;*.mkv;*.ts";
                     if (file.ShowDialog() == DialogResult.OK)
                     {
-                        promise.Resovle(new JavaScriptValue(file.FileName));
+                        string[] mediaInfo = ffmpegHelper.GetMediaInfo(file.FileName);
+                        JavaScriptArray retArray = new JavaScriptArray()
+                        {
+                            file.FileName,
+                            mediaInfo[0],
+                            mediaInfo[1],
+                            mediaInfo[2]
+                        };
+                        promise.Resovle(retArray);
                     }
                     else
                     {
@@ -118,21 +127,31 @@ namespace FFvideoConverter
                 thread.Start();
             });
 
-            // 注册转码方法
-            jsObj.Add("VideoConvert", async (args, promise) =>
+            // 注册开始转码方法
+            jsObj.Add("StartConvert", async (args, promise) =>
             {
                 FFConvertConfig config = JObject.Parse(args[0].GetString()).ToObject<FFConvertConfig>();
                 await Task.Run(() => {
                     ffmpegHelper.ConvertProgress = 0;
                     bool isOk = ffmpegHelper.Convert(config);
-                    if (isOk) promise.Resovle(new JavaScriptValue("转换成功"));
+                    if (isOk) promise.Resovle(new JavaScriptValue("转码成功"));
                     else promise.Reject("转码失败");
                 });
             });
 
+            // 注册停止转码方法
+            jsObj.Add("StopConvert", async (args, promise) =>
+            {
+                await Task.Run(() => {
+                    ffmpegHelper.CancelConvert();
+                    ffmpegHelper.ConvertProgress = 0;
+                    promise.Resovle(new JavaScriptValue("取消转换"));
+                });
+            });
+
             // 注册转码进度条
-            jsObj.DefineProperty("Progress", 
-                () => new JavaScriptValue(ffmpegHelper.ConvertProgress), 
+            jsObj.DefineProperty("Progress",
+                () => new JavaScriptValue(ffmpegHelper.ConvertProgress),
                 (val) => { InvokeIfRequired(() => ffmpegHelper.ConvertProgress = val); });
 
             RegisterJavaScriptObject("SharpObject", jsObj);

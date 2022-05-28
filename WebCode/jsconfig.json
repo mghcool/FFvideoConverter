@@ -3,6 +3,7 @@
     "target": "es5",
     "module": "esnext",
     "jsx": "preserve",
+    "types": ["element-plus/global"],
     "baseUrl": "./",
     "moduleResolution": "node",
     "paths": {
