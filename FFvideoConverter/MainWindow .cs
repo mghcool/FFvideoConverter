@@ -3,6 +3,7 @@ using NetDimension.NanUI.HostWindow;
 using NetDimension.NanUI.JavaScript;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 
 namespace FFvideoConverter
 {
@@ -87,8 +88,11 @@ namespace FFvideoConverter
                 {
                     OpenFileDialog file = new OpenFileDialog();
                     file.Filter = "video|*.mp4;*.mkv;*.ts";
-                    if (file.ShowDialog() == DialogResult.OK)
+                    NativeWindow nativeWindow = new NativeWindow();
+                    nativeWindow.AssignHandle(HostWindowHandle);    // 传入窗口句柄,打开文件框时锁定主窗体
+                    if (file.ShowDialog(nativeWindow) == DialogResult.OK)
                     {
+
                         string[] mediaInfo = ffmpegHelper.GetMediaInfo(file.FileName);
                         JavaScriptArray retArray = new JavaScriptArray()
                         {
@@ -114,7 +118,9 @@ namespace FFvideoConverter
                 Thread thread = new Thread(new ThreadStart(() =>
                 {
                     FolderBrowserDialog path = new FolderBrowserDialog();
-                    if (path.ShowDialog() == DialogResult.OK)
+                    NativeWindow nativeWindow = new NativeWindow();
+                    nativeWindow.AssignHandle(HostWindowHandle);
+                    if (path.ShowDialog(nativeWindow) == DialogResult.OK)
                     {
                         promise.Resovle(new JavaScriptValue(path.SelectedPath));
                     }
