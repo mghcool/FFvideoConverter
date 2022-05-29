@@ -84,43 +84,38 @@ namespace FFvideoConverter
             // 注册打开文件方法
             jsObj.Add("OpenFile", (args, promise) =>
             {
-                Thread thread = new Thread(new ThreadStart(() =>
+                string fileName = string.Empty;
+                InvokeIfRequired(() =>
                 {
                     OpenFileDialog file = new OpenFileDialog();
                     file.Filter = "video|*.mp4;*.mkv;*.ts";
-                    NativeWindow nativeWindow = new NativeWindow();
-                    nativeWindow.AssignHandle(HostWindowHandle);    // 传入窗口句柄,打开文件框时锁定主窗体
-                    if (file.ShowDialog(nativeWindow) == DialogResult.OK)
+                    if (file.ShowDialog(WindowHWND) == DialogResult.OK)
                     {
-
-                        string[] mediaInfo = ffmpegHelper.GetMediaInfo(file.FileName);
-                        JavaScriptArray retArray = new JavaScriptArray()
-                        {
-                            file.FileName,
-                            mediaInfo[0],
-                            mediaInfo[1],
-                            mediaInfo[2]
-                        };
-                        promise.Resovle(retArray);
+                        fileName = file.FileName;
                     }
                     else
                     {
                         promise.Reject("取消操作");
                     }
-                }));
-                thread.SetApartmentState(ApartmentState.STA); //创建并进入一个线程单元
-                thread.Start();
+                });
+                string[] mediaInfo = ffmpegHelper.GetMediaInfo(fileName);
+                JavaScriptArray retArray = new JavaScriptArray()
+                {
+                    fileName,
+                    mediaInfo[0],
+                    mediaInfo[1],
+                    mediaInfo[2]
+                };
+                promise.Resovle(retArray);
             });
 
             // 注册打开文件夹方法
             jsObj.Add("FolderBrowser", (args, promise) =>
-            {
-                Thread thread = new Thread(new ThreadStart(() =>
+            {               
+                InvokeIfRequired(() =>
                 {
                     FolderBrowserDialog path = new FolderBrowserDialog();
-                    NativeWindow nativeWindow = new NativeWindow();
-                    nativeWindow.AssignHandle(HostWindowHandle);
-                    if (path.ShowDialog(nativeWindow) == DialogResult.OK)
+                    if (path.ShowDialog(this.WindowHWND) == DialogResult.OK)
                     {
                         promise.Resovle(new JavaScriptValue(path.SelectedPath));
                     }
@@ -128,9 +123,7 @@ namespace FFvideoConverter
                     {
                         promise.Reject("取消操作");
                     }
-                }));
-                thread.SetApartmentState(ApartmentState.STA); //创建并进入一个线程单元
-                thread.Start();
+                });
             });
 
             // 注册开始转码方法

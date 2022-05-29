@@ -4,6 +4,7 @@ namespace FFvideoConverter
 {
     internal static class Program
     {
+        [STAThread]
         static void Main()
         {
             WinFormium.CreateRuntimeBuilder(env => {
