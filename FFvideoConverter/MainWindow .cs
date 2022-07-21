@@ -88,7 +88,7 @@ namespace FFvideoConverter
                 InvokeIfRequired(() =>
                 {
                     OpenFileDialog file = new OpenFileDialog();
-                    file.Filter = "video|*.mp4;*.mkv;*.ts";
+                    file.Filter = "video|*.mp4;*.mkv;*.ts;*.mov;*.avi;*.mpeg;*.wmv;*.rmvb";
                     if (file.ShowDialog(WindowHWND) == DialogResult.OK)
                     {
                         fileName = file.FileName;
