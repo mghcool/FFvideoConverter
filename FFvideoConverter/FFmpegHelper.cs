@@ -1,6 +1,7 @@
 ﻿/*************************************************
  * 参考文档：https://ffmpeg.xabe.net/docs.html
  * ***********************************************/
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using Xabe.FFmpeg;
@@ -73,18 +74,16 @@ namespace FFvideoConverter
             string audioInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams a {file}").Result;
             string subtitleInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams s {file}").Result;
             var vjson = (JObject)JObject.Parse(videoInfo)["streams"][0];
-            vjson.Remove("disposition");
-            videoInfo = vjson.ToString();
             var ajson = (JArray)JObject.Parse(audioInfo)["streams"];
-            if (ajson.Count > 0)
-                audioInfo = ajson.ToString();
-            else
-                audioInfo = "无音频";
             var sjson = (JArray)JObject.Parse(subtitleInfo)["streams"];
-            if (sjson.Count > 0)
-                subtitleInfo = sjson.ToString();
-            else
-                subtitleInfo = "无字幕";
+            var videoInfoStorage = vjson.ToObject<MediaInfoStorage.VideoInfoStorage>();
+            var audioInfoStorages = ajson.ToObject<MediaInfoStorage.AudioInfoStorage[]>();
+            var subtitleInfoStorage = sjson.ToObject<MediaInfoStorage.SubtitleInfoStorage[]>();
+
+            videoInfo = JsonConvert.SerializeObject(videoInfoStorage, Formatting.Indented);
+            audioInfo = (ajson.Count > 0) ? JsonConvert.SerializeObject(audioInfoStorages, Formatting.Indented) : "无音频";
+            subtitleInfo = (sjson.Count > 0) ? JsonConvert.SerializeObject(subtitleInfoStorage, Formatting.Indented) : "无字幕";
+
             return new string[] { videoInfo, audioInfo, subtitleInfo };
         }
 
