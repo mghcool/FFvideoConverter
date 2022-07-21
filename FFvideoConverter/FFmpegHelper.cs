@@ -69,12 +69,22 @@ namespace FFvideoConverter
         /// <returns>[0]是视频信息，[1]是音频信息</returns>
         public string[] GetMediaInfo(string file)
         {
-            string videoInfo = Probe.New().Start($"-hide_banner -pretty -show_streams -select_streams v {file}").Result;
-            string audioInfo = Probe.New().Start($"-hide_banner -pretty -show_streams -select_streams a {file}").Result;
-            string subtitleInfo = Probe.New().Start($"-hide_banner -pretty -show_streams -select_streams s {file}").Result;
-            videoInfo = videoInfo.Replace("[STREAM]\r\n", "").Replace("[/STREAM]", "");
-            audioInfo = audioInfo.Replace("[STREAM]\r\n", "").Replace("[/STREAM]", "");
-            subtitleInfo = subtitleInfo.Replace("[STREAM]\r\n", "").Replace("[/STREAM]", "");
+            string videoInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams v {file}").Result;
+            string audioInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams a {file}").Result;
+            string subtitleInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams s {file}").Result;
+            var vjson = (JObject)JObject.Parse(videoInfo)["streams"][0];
+            vjson.Remove("disposition");
+            videoInfo = vjson.ToString();
+            var ajson = (JArray)JObject.Parse(audioInfo)["streams"];
+            if (ajson.Count > 0)
+                audioInfo = ajson.ToString();
+            else
+                audioInfo = "无音频";
+            var sjson = (JArray)JObject.Parse(subtitleInfo)["streams"];
+            if (sjson.Count > 0)
+                subtitleInfo = sjson.ToString();
+            else
+                subtitleInfo = "无字幕";
             return new string[] { videoInfo, audioInfo, subtitleInfo };
         }
 
@@ -94,30 +104,58 @@ namespace FFvideoConverter
                 IVideoStream videoStream = mediaInfo.VideoStreams.FirstOrDefault();
                 IAudioStream audioStream = mediaInfo.AudioStreams.FirstOrDefault();
                 ISubtitleStream subtitleStream = mediaInfo.SubtitleStreams.FirstOrDefault();
+                IConversion conversion = FFmpeg.Conversions.New();
+
                 if (config.CopyType == FFCopyType.Both)
                 {
                     videoStream = videoStream.CopyStream();
                     audioStream = audioStream.CopyStream();
                 }
                 else
-                {                   
-                    if (config.CopyType == FFCopyType.Video || config.CopyType == FFCopyType.None)
-                    {
-                        if (config.CopyType != FFCopyType.None) videoStream = videoStream.CopyStream();
-                        audioStream.SetCodec(AudioCodec.aac);
-                        //audioStream.SetBitrate(12000);
-                        //audioStream.SetChannels(1);
-                        //audioStream.SetSeek(TimeSpan.FromSeconds(5));
-                    }
+                {
                     if (config.CopyType == FFCopyType.Audio || config.CopyType == FFCopyType.None)
                     {
                         if (config.CopyType != FFCopyType.None) audioStream = audioStream.CopyStream();
+                        // 设置视频编码
                         videoStream.SetCodec(VideoCodec.h264);
-                        //videoStream.SetBitrate(12000);
-                        //videoStream.SetSize(VideoSize.Hd480);
+                        // 设置帧率（fps）
+                        videoStream.SetFramerate(60);
+                        // 设置比特率
+                        videoStream.SetBitrate(12000);
+                        // 设置视频质量
+                        videoStream.SetSize(VideoSize.Hd480); //videoStream.SetSize(1920,1080);
+                        // 设置倍速
+                        videoStream.ChangeSpeed(1.25);
+
+                        // 设置输出帧数
+                        //videoStream.SetOutputFramesCount(60);
+                        // 添加字幕
+                        //videoStream.AddSubtitles("path");
+                        // 视频截取
+                        //videoStream.Split(TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(10));
+                    }
+                    if (config.CopyType == FFCopyType.Video || config.CopyType == FFCopyType.None)
+                    {
+                        if (config.CopyType != FFCopyType.None) videoStream = videoStream.CopyStream();
+                        // 设置音频编码
+                        //audioStream.SetCodec(AudioCodec.aac);
+                        // 设置比特率
+                        //audioStream.SetBitrate(12000);
+                        // 设置采样率(Hz)
+                        //audioStream.SetSampleRate(25);
+                        // 设置音频通道
+                        //audioStream.SetChannels(1);
+                        // 设置倍速(0.5 - 2.0)
+                        //audioStream.ChangeSpeed(1.25);
+                        // 设置音量
+                        conversion.AddParameter("-filter:a \"volume=10dB\"");
+
+
+                        // 音频截取
+                        //audioStream.Split(TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(10));
                     }
                 }
-                IConversion conversion = FFmpeg.Conversions.New();
+                
                 conversion.AddStream(audioStream, (IStream)videoStream);               
                 conversion.SetOutput(outputFile);
                 conversion.SetOverwriteOutput(true); // 覆盖输出文件
@@ -134,6 +172,7 @@ namespace FFvideoConverter
                     Debug.WriteLine(args.Data);
                 };
                 CancelToken = new CancellationTokenSource();
+                string args = conversion.Build();
                 IConversionResult ret = conversion.Start(CancelToken.Token).Result;
                 Debug.WriteLine($"转码完成，使用参数：{ret.Arguments}");
                 return true;
