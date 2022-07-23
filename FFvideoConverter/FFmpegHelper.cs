@@ -80,11 +80,52 @@ namespace FFvideoConverter
             var audioInfoStorages = ajson.ToObject<MediaInfoStorage.AudioInfoStorage[]>();
             var subtitleInfoStorage = sjson.ToObject<MediaInfoStorage.SubtitleInfoStorage[]>();
 
-            videoInfo = JsonConvert.SerializeObject(videoInfoStorage, Formatting.Indented);
-            audioInfo = (ajson.Count > 0) ? JsonConvert.SerializeObject(audioInfoStorages, Formatting.Indented) : "无音频";
-            subtitleInfo = (sjson.Count > 0) ? JsonConvert.SerializeObject(subtitleInfoStorage, Formatting.Indented) : "无字幕";
+            return  MediaInfoObjectTostring(new MediaInfoStorage 
+            { 
+                VideoInfo = videoInfoStorage,
+                AudioInfo = audioInfoStorages,
+                SubtitleInfo = subtitleInfoStorage,
+            });
+        }
 
-            return new string[] { videoInfo, audioInfo, subtitleInfo };
+        public string[] MediaInfoObjectTostring(MediaInfoStorage mediaInfo)
+        {
+            string videoInfo = $"编码：{mediaInfo.VideoInfo.codec_name}\n" +
+                $"编码详情：{mediaInfo.VideoInfo.codec_long_name}\n" +
+                $"视频质量：{mediaInfo.VideoInfo.profile}\n" +
+                $"分辨率：{mediaInfo.VideoInfo.coded_width} x {mediaInfo.VideoInfo.coded_height}\n" +
+                $"颜色空间：{mediaInfo.VideoInfo.color_space}\n" +
+                $"视频时长：{mediaInfo.VideoInfo.duration:T}\n" +
+                $"比特率：{mediaInfo.VideoInfo.bit_rate}\n" +
+                $"\n";
+
+            string audioInfo = "";
+            foreach(var audio in mediaInfo.AudioInfo)
+            {
+                audioInfo += $"音频序号：{audio.index}\n";
+                audioInfo += $"编码：{audio.codec_name}\n";
+                audioInfo += $"编码详情：{audio.codec_long_name}\n";
+                audioInfo += $"质量：{audio.profile}\n";
+                audioInfo += $"采样率：{audio.sample_rate}\n";
+                audioInfo += $"通道数：{audio.channels}\n";
+                audioInfo += $"通道布局：{audio.channel_layout}\n";
+                audioInfo += $"音频时长：{audio.duration:T}\n";
+                audioInfo += $"比特率：{audio.bit_rate}\n";
+                audioInfo += $"\n";
+            }
+            string subtitleInfo = "";
+            foreach(var subtitle in mediaInfo.SubtitleInfo)
+            {
+                subtitleInfo += $"字幕序号：{subtitle.index}\n";
+                subtitleInfo += $"编码：{subtitle.codec_name}\n";
+                subtitleInfo += $"编码详情：{subtitle.codec_long_name}\n";
+                subtitleInfo += $"语言：{subtitle.tags.language}\n";
+                subtitleInfo += $"标题：{subtitle.tags.title}\n";
+                subtitleInfo += $"文件大小(byte)：{subtitle.tags.NUMBER_OF_BYTES}\n";
+                subtitleInfo += $"\n";
+            }
+
+            return new[] {videoInfo, audioInfo, subtitleInfo };
         }
 
         /// <summary>

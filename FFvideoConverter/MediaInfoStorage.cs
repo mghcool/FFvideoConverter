@@ -82,6 +82,8 @@ namespace FFvideoConverter
         /// </summary>
         public class AudioInfoStorage
         {
+            public int index { get; set; }
+
             public string codec_name { get; set; }
 
             public string codec_long_name { get; set; }
@@ -127,6 +129,8 @@ namespace FFvideoConverter
         /// </summary>
         public class SubtitleInfoStorage
         {
+            public int index { get; set; }
+
             public string codec_name { get; set; }
 
             public string codec_long_name { get; set; }
