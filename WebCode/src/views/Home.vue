@@ -20,7 +20,7 @@
 
     <el-row :gutter="15">
         <el-col :span="2">
-            <el-button type="primary" link @click="showMediaInfo = !showMediaInfo">媒体信息</el-button>
+            <el-button type="primary" link style="font-size: medium; padding-top: 7px;" @click="showMediaInfo = !showMediaInfo">媒体信息</el-button>
         </el-col>
         <el-col :span="5">
             <el-form-item label="转码到：">
@@ -192,15 +192,15 @@ const mediaInfo = ref({
 const videoArgs = ref({
     m1: { label: '编解码器', selected: '', list: ['H.264', 'H.265', 'MPGE-1', 'MPGE-2'] },
     m2: { label: '帧率', selected: '', list: ['25fps', '30fps', '60fps'] },
-    m3: { label: '档次', selected: '', list: ['1', '2', '3'] },
-    m4: { label: '级别', selected: '', list: ['1', '2', '3'] },
-    m5: { label: '质量', selected: '', list: ['1', '2', '3'] },
+    m3: { label: '比特率', selected: '', list: ['1', '2', '3'] },
+    m4: { label: '质量', selected: '', list: ['1', '2', '3'] },
+    m5: { label: '倍速', selected: '', list: ['1', '2', '3'] },
 })
 const audioArgs = ref({
     m1: { label: '编解码器', selected: '', list: ['AAC', 'AC3'] },
-    m2: { label: '声道', selected: '', list: ['25fps', '30fps', '60fps'] },
-    m3: { label: '码率', selected: '', list: ['1', '2', '3'] },
-    m4: { label: '频率', selected: '', list: ['16000Hz', '2', '3'] },
+    m2: { label: '比特率', selected: '', list: ['25fps', '30fps', '60fps'] },
+    m3: { label: '采样率', selected: '', list: ['1', '2', '3'] },
+    m4: { label: '音频通道', selected: '', list: ['16000Hz', '2', '3'] },
     m5: { label: '音量', selected: '', list: ['1', '2', '3'] },
 })
 
@@ -264,7 +264,13 @@ const onStartConvert = () => {      // 开始转换
         InputFile: inputFile.value,
         OutputPath: outputPath.value,
         OutType: videoType.value,
-        CopyType: copyType
+        CopyType: copyType,
+        VideoConfig: {
+            CodecName: videoArgs.value.m1.selected
+        },
+        AudioConfig: {
+            CodecName: audioArgs.value.m1.selected
+        }
     }
     startConvert.value = true
     new Promise(Formium.external.SharpObject.StartConvert(JSON.stringify(config)))
