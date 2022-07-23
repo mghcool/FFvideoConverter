@@ -1,4 +1,6 @@
-﻿namespace FFvideoConverter.Model
+﻿using Newtonsoft.Json.Linq;
+
+namespace FFvideoConverter.Model
 {
     /// <summary>
     /// 媒体信息储存
@@ -56,6 +58,11 @@
             public int coded_height { get; set; }
 
             /// <summary>
+            /// 色彩格式
+            /// </summary>
+            public string pix_fmt { get; set; }
+
+            /// <summary>
             /// 颜色空间
             /// </summary>
             public string color_space { get; set; }
@@ -69,6 +76,21 @@
             /// 比特率
             /// </summary>
             public string bit_rate { get; set; }
+
+            /// <summary>
+            /// 实际帧率
+            /// </summary>
+            public string r_frame_rate { get; set; }
+
+            /// <summary>
+            /// 平均帧率
+            /// </summary>
+            public string avg_frame_rate { get; set; }
+
+            /// <summary>
+            /// 标签
+            /// </summary>
+            public Tags? tags { get; set; }
         }
 
         /// <summary>
@@ -116,10 +138,15 @@
             /// 比特率
             /// </summary>
             public string bit_rate { get; set; }
+
+            /// <summary>
+            /// 标签
+            /// </summary>
+            public Tags tags { get; set; }
         }
 
         /// <summary>
-        /// 字母信息储存类
+        /// 字幕信息储存类
         /// </summary>
         public class SubtitleInfoStorage
         {
@@ -129,14 +156,43 @@
 
             public string codec_long_name { get; set; }
 
+            /// <summary>
+            /// 标签
+            /// </summary>
             public Tags tags { get; set; }
+        }
 
-            public class Tags
+        /// <summary>
+        /// 媒体流标签类
+        /// </summary>
+        public class Tags : Dictionary<string, JToken?>
+        {
+            /// <summary>
+            /// 获取或设置指定键的值
+            /// </summary>
+            /// <param name="key">键</param>
+            /// <returns></returns>
+            public new JToken? this[string key]
             {
-                public string language { get; set; }
+                get
+                {
+                    _ = this.TryGetValue(key, out JToken? jToken);
+                    return jToken;
+                }
+                set
+                {
+                    this[key] = value;
+                }
+            }
 
-                public string title { get; set; }
-                public string NUMBER_OF_BYTES { get; set; }
+            /// <summary>
+            /// 根据模糊键查询值
+            /// </summary>
+            /// <param name="keyContains">键包含的字符串</param>
+            /// <returns>找到返回对应值，未找到返回null</returns>
+            public JToken? GetValueLike(string keyContains)
+            {
+                return this.Where(node => { return node.Key.Contains(keyContains); }).FirstOrDefault().Value;
             }
         }
     }

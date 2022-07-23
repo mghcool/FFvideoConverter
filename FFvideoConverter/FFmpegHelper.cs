@@ -1,7 +1,7 @@
 ﻿/*************************************************
  * 参考文档：https://ffmpeg.xabe.net/docs.html
  * ***********************************************/
-using Newtonsoft.Json;
+using FFvideoConverter.Model;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using Xabe.FFmpeg;
@@ -78,31 +78,73 @@ namespace FFvideoConverter
             var sjson = (JArray)JObject.Parse(subtitleInfo)["streams"];
             var videoInfoStorage = vjson.ToObject<MediaInfoStorage.VideoInfoStorage>();
             var audioInfoStorages = ajson.ToObject<MediaInfoStorage.AudioInfoStorage[]>();
-            var subtitleInfoStorage = sjson.ToObject<MediaInfoStorage.SubtitleInfoStorage[]>();
+            var subtitleInfoStorages = sjson.ToObject<MediaInfoStorage.SubtitleInfoStorage[]>();
+            // 视频标签信息补充
+            if (videoInfoStorage.tags != null)
+            {
+                if (videoInfoStorage.duration == DateTime.MinValue)
+                {
+                    var durationNode = videoInfoStorage.tags.GetValueLike("DURATION");
+                    if (durationNode != null) videoInfoStorage.duration = durationNode.ToObject<DateTime>();
+                }
+                if (videoInfoStorage.bit_rate == null)
+                {
+                    var bit_rate = videoInfoStorage.tags.GetValueLike("BPS");
+                    if (bit_rate != null) videoInfoStorage.bit_rate = $"{int.Parse(bit_rate.ToString()) / 1000} kbps";
+                }
+            }
+            // 音频标签信息补充
+            foreach (var audioInfoStorage in audioInfoStorages)
+            {
+                if (audioInfoStorage.tags != null)
+                {
+                    if (audioInfoStorage.duration == DateTime.MinValue)
+                    {
+                        var durationNode = audioInfoStorage.tags.GetValueLike("DURATION");
+                        if (durationNode != null) audioInfoStorage.duration = durationNode.ToObject<DateTime>();
+                    }
+                    if (audioInfoStorage.bit_rate == null)
+                    {
+                        var bit_rate = audioInfoStorage.tags.GetValueLike("BPS");
+                        if (bit_rate != null) audioInfoStorage.bit_rate = $"{int.Parse(bit_rate.ToString()) / 1000} kbps";
+                    }
+                }
+            }
 
-            return  MediaInfoObjectTostring(new MediaInfoStorage 
+            return MediaInfoObjectTostring(new MediaInfoStorage 
             { 
                 VideoInfo = videoInfoStorage,
                 AudioInfo = audioInfoStorages,
-                SubtitleInfo = subtitleInfoStorage,
+                SubtitleInfo = subtitleInfoStorages,
             });
         }
 
+        /// <summary>
+        /// 媒体信息对象转字符串描述
+        /// </summary>
+        /// <param name="mediaInfo"媒体信息对象></param>
+        /// <returns>字符串描述数组</returns>
         public string[] MediaInfoObjectTostring(MediaInfoStorage mediaInfo)
         {
-            string videoInfo = $"编码：{mediaInfo.VideoInfo.codec_name}\n" +
+            string[] frame_rate = mediaInfo.VideoInfo.r_frame_rate.Split('/');
+            string videoInfo =
+                $"标题：{mediaInfo.VideoInfo.tags?["title"]}\n" +
+                $"编码：{mediaInfo.VideoInfo.codec_name}\n" +
                 $"编码详情：{mediaInfo.VideoInfo.codec_long_name}\n" +
                 $"视频质量：{mediaInfo.VideoInfo.profile}\n" +
-                $"分辨率：{mediaInfo.VideoInfo.coded_width} x {mediaInfo.VideoInfo.coded_height}\n" +
+                $"分辨率：{mediaInfo.VideoInfo.coded_width} × {mediaInfo.VideoInfo.coded_height}\n" + 
+                $"色彩格式：{mediaInfo.VideoInfo.pix_fmt}\n" +
                 $"颜色空间：{mediaInfo.VideoInfo.color_space}\n" +
                 $"视频时长：{mediaInfo.VideoInfo.duration:T}\n" +
                 $"比特率：{mediaInfo.VideoInfo.bit_rate}\n" +
+                $"帧率：{(double.Parse(frame_rate[0]) / double.Parse(frame_rate[1])):f2} fps\n" +
                 $"\n";
 
             string audioInfo = "";
             foreach(var audio in mediaInfo.AudioInfo)
             {
                 audioInfo += $"音频序号：{audio.index}\n";
+                audioInfo += $"标题：{audio.tags?["title"]}\n";
                 audioInfo += $"编码：{audio.codec_name}\n";
                 audioInfo += $"编码详情：{audio.codec_long_name}\n";
                 audioInfo += $"质量：{audio.profile}\n";
@@ -119,9 +161,9 @@ namespace FFvideoConverter
                 subtitleInfo += $"字幕序号：{subtitle.index}\n";
                 subtitleInfo += $"编码：{subtitle.codec_name}\n";
                 subtitleInfo += $"编码详情：{subtitle.codec_long_name}\n";
-                subtitleInfo += $"语言：{subtitle.tags.language}\n";
-                subtitleInfo += $"标题：{subtitle.tags.title}\n";
-                subtitleInfo += $"文件大小(byte)：{subtitle.tags.NUMBER_OF_BYTES}\n";
+                subtitleInfo += $"语言：{subtitle.tags?["language"]}\n";
+                subtitleInfo += $"标题：{subtitle.tags?["title"]}\n";
+                subtitleInfo += $"文件大小：{subtitle.tags?.GetValueLike("NUMBER_OF_BYTES")} byte\n";
                 subtitleInfo += $"\n";
             }
 
@@ -136,7 +178,7 @@ namespace FFvideoConverter
         public bool Convert(FFConvertConfig config)
         {
             if (config.InputFile == string.Empty || config.OutputPath == string.Empty) return false;
-            string outFilename = $"{Path.GetFileNameWithoutExtension(config.InputFile)}.{config.OutType}";
+            string outFilename = $"{Path.GetFileNameWithoutExtension(config.InputFile)}.{config.OutType.ToLower()}";
             string outputFile = Path.Combine(config.OutputPath, outFilename);
             try
             {
@@ -157,15 +199,29 @@ namespace FFvideoConverter
                     {
                         if (config.CopyType != FFCopyType.None) audioStream = audioStream.CopyStream();
                         // 设置视频编码
-                        videoStream.SetCodec(VideoCodec.h264);
+                        switch(config.VideoConfig.CodecName)
+                        {
+                            case "H.265":
+                                videoStream.SetCodec(VideoCodec.hevc);
+                                break;
+                            case "H.264":
+                                videoStream.SetCodec(VideoCodec.h264);
+                                break;
+                            case "MPGE-1":
+                                videoStream.SetCodec(VideoCodec.mpeg1video);
+                                break;
+                            case "MPGE-2":
+                                videoStream.SetCodec(VideoCodec.mpeg2video);
+                                break;
+                        }
                         // 设置帧率（fps）
-                        videoStream.SetFramerate(60);
-                        // 设置比特率
-                        videoStream.SetBitrate(12000);
-                        // 设置视频质量
-                        videoStream.SetSize(VideoSize.Hd480); //videoStream.SetSize(1920,1080);
-                        // 设置倍速
-                        videoStream.ChangeSpeed(1.25);
+                        //videoStream.SetFramerate(60);
+                        //// 设置比特率
+                        //videoStream.SetBitrate(12000);
+                        //// 设置视频质量
+                        //videoStream.SetSize(VideoSize.Hd480); //videoStream.SetSize(1920,1080);
+                        //// 设置倍速
+                        //videoStream.ChangeSpeed(1.25);
 
                         // 设置输出帧数
                         //videoStream.SetOutputFramesCount(60);
@@ -188,7 +244,7 @@ namespace FFvideoConverter
                         // 设置倍速(0.5 - 2.0)
                         //audioStream.ChangeSpeed(1.25);
                         // 设置音量
-                        conversion.AddParameter("-filter:a \"volume=10dB\"");
+                        //conversion.AddParameter("-filter:a \"volume=10dB\"");
 
 
                         // 音频截取
