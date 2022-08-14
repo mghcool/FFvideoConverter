@@ -70,9 +70,9 @@ namespace FFvideoConverter
         /// <returns>[0]是视频信息，[1]是音频信息</returns>
         public string[] GetMediaInfo(string file)
         {
-            string videoInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams v {file}").Result;
-            string audioInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams a {file}").Result;
-            string subtitleInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams s {file}").Result;
+            string videoInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams v \"{file}\"").Result;
+            string audioInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams a \"{file}\"").Result;
+            string subtitleInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams s \"{file}\"").Result;
             var vjson = (JObject)JObject.Parse(videoInfo)["streams"][0];
             var ajson = (JArray)JObject.Parse(audioInfo)["streams"];
             var sjson = (JArray)JObject.Parse(subtitleInfo)["streams"];
