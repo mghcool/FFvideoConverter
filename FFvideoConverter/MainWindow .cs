@@ -1,9 +1,11 @@
-﻿using NetDimension.NanUI;
+﻿using FFvideoConverter.Model;
+using NetDimension.NanUI;
 using NetDimension.NanUI.HostWindow;
 using NetDimension.NanUI.JavaScript;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace FFvideoConverter
 {
@@ -68,6 +70,10 @@ namespace FFvideoConverter
         {
             // 注册js对象
             RegisterJavaScriptObject();
+            JsObjTest jsObjTest = new JsObjTest();
+            jsObjTest.OutputTypes = Settings.OutputTypes;
+            JsObjectHelper jsObjectHelper = new JsObjectHelper(this);
+            jsObjectHelper.Register("TestObject", jsObjTest);
         }
 
         private void RegisterJavaScriptObject()
@@ -80,6 +86,12 @@ namespace FFvideoConverter
                 ShowDevTools();
                 return new JavaScriptValue("ok");
             });
+
+            //注册值
+            jsObj.Add("version", "v123");
+
+            // 注册输出文件类型
+            jsObj.DefineProperty("OutputTypes", () => Settings.OutputTypes);
 
             // 注册打开文件方法
             jsObj.Add("OpenFile", (args, promise) =>

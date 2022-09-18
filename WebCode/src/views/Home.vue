@@ -168,7 +168,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 /* data *************************************************/
 const inputFile = ref('')
 const outputPath = ref('')
-const videoTypeList = ref(['MP4', 'AVI', 'MPEG', 'MOV', 'MKV', '3GP', 'WMV', 'FLV', 'MPG', 'AV1', 'OGV', 'MP3'])
+const videoTypeList = ref(Formium.external.SharpObject.OutputTypes)
 const videoType = ref(videoTypeList.value[0])
 const videoCopyDisabled = ref(false)
 const audioCopyDisabled = ref(false)
