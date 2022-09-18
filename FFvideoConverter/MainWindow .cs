@@ -84,10 +84,11 @@ namespace FFvideoConverter
             // 注册打开文件方法
             jsObj.Add("OpenFile", (args, promise) =>
             {
+                bool isCancel = false;
                 string fileName = string.Empty;
                 InvokeIfRequired(() =>
                 {
-                    OpenFileDialog file = new OpenFileDialog();
+                    var file = new OpenFileDialog();
                     file.Filter = "video|*.mp4;*.mkv;*.ts;*.mov;*.avi;*.mpeg;*.wmv;*.rmvb";
                     if (file.ShowDialog(WindowHWND) == DialogResult.OK)
                     {
@@ -96,10 +97,12 @@ namespace FFvideoConverter
                     else
                     {
                         promise.Reject("取消操作");
+                        isCancel = true;
                     }
                 });
+                if (isCancel) return;
                 string[] mediaInfo = ffmpegHelper.GetMediaInfo(fileName);
-                JavaScriptArray retArray = new JavaScriptArray()
+                var retArray = new JavaScriptArray()
                 {
                     fileName,
                     mediaInfo[0],
@@ -111,10 +114,10 @@ namespace FFvideoConverter
 
             // 注册打开文件夹方法
             jsObj.Add("FolderBrowser", (args, promise) =>
-            {               
+            {
                 InvokeIfRequired(() =>
                 {
-                    FolderBrowserDialog path = new FolderBrowserDialog();
+                    var path = new FolderBrowserDialog();
                     if (path.ShowDialog(this.WindowHWND) == DialogResult.OK)
                     {
                         promise.Resovle(new JavaScriptValue(path.SelectedPath));
