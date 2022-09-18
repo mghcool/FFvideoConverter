@@ -32,12 +32,12 @@
         <el-col :span="1"></el-col>
         <el-col :span="6">
             <el-form-item label="复制源视频参数">
-                <el-switch v-model="videoCopy" />
+                <el-switch v-model="videoCopy" :disabled="videoCopyDisabled" />
             </el-form-item>
         </el-col>
         <el-col :span="6">
             <el-form-item label="复制源音频参数">
-                <el-switch v-model="audioCopy" />
+                <el-switch v-model="audioCopy" :disabled="audioCopyDisabled" />
             </el-form-item>
         </el-col>
         <el-col :span="4" style="text-align: center;">
@@ -162,14 +162,16 @@
 </style>
 
 <script setup>
-import { ref, toRaw, computed, onMounted } from "vue"
+import { ref, toRaw, computed, watch, onMounted } from "vue"
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 /* data *************************************************/
 const inputFile = ref('')
 const outputPath = ref('')
-const videoTypeList = ref(['MP4', 'AVI', 'MPEG', 'MOV', 'MKV', '3GP', 'WMV', 'FLV', 'MPG', 'AV1', 'OGV'])
+const videoTypeList = ref(['MP4', 'AVI', 'MPEG', 'MOV', 'MKV', '3GP', 'WMV', 'FLV', 'MPG', 'AV1', 'OGV', 'MP3'])
 const videoType = ref(videoTypeList.value[0])
+const videoCopyDisabled = ref(false)
+const audioCopyDisabled = ref(false)
 const videoCopy = ref(true)
 const audioCopy = ref(true)
 const startConvert = ref(false)
@@ -213,6 +215,21 @@ onMounted(() => {
         audioArgs.value[key].selected = audioArgs.value[key].list[0]
     })
 })
+
+/* watch *************************************************/
+watch(videoType, (newType, oldType) => {
+    if(newType === "MP3") {
+        videoCopy.value = true
+        audioCopy.value = true
+        videoCopyDisabled.value = true
+        audioCopyDisabled.value = true
+    }
+    else {
+        videoCopyDisabled.value = false
+        audioCopyDisabled.value = false
+    }
+});
+
 
 /* method *************************************************/
 const onOpenFile = () => {      // 打开文件

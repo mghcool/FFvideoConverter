@@ -188,6 +188,26 @@ namespace FFvideoConverter
                 ISubtitleStream subtitleStream = mediaInfo.SubtitleStreams.FirstOrDefault();
                 IConversion conversion = FFmpeg.Conversions.New();
 
+                if (config.OutType == "MP3")
+                {
+                    conversion.AddStream(audioStream);
+                    conversion.SetOutput(outputFile);
+                    conversion.SetOverwriteOutput(true); // 覆盖输出文件
+                                                         //conversion.UseMultiThread(16);  // 多线程，默认应该是cpu的核心数
+                    conversion.AddParameter("-hide_banner");    // 禁止显示版权声明，构建选项和库版本等信息
+                    //conversion.AddParameter("-q:a 0 -map a");
+                    conversion.OnProgress += (sender, args) =>
+                    {
+                        ConvertProgress = args.Percent;
+                        OnConvertProgress?.Invoke(ConvertProgress);
+                    };
+                    CancelToken = new CancellationTokenSource();
+                    string args1 = conversion.Build();
+                    IConversionResult ret1 = conversion.Start(CancelToken.Token).Result;
+                    Debug.WriteLine($"转码完成，使用参数：{ret1.Arguments}");
+                    return true;
+                }
+
                 if (config.CopyType == FFCopyType.Both)
                 {
                     videoStream = videoStream.CopyStream();
