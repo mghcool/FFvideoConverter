@@ -107,7 +107,8 @@ namespace FFvideoConverter
                             object? ret = null;
                             // 转换参数
                             object[] parameters = ParamesToObjectArry(method.GetParameters(), args);
-                            if (parameters == null) return new JavaScriptValue("参数错误");
+                            if (parameters == null) throw new Exception("参数错误");
+                            //if (parameters == null) return new JavaScriptValue("参数错误");
 
                             if (memberAttr.UsedWindowHwnd)  // 使用窗口句柄
                             {
