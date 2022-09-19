@@ -46,12 +46,14 @@ namespace FFvideoConverter
                 JsObjectType? objType = (JsObjectType?)prop.GetCustomAttribute(typeof(JsObjectType));
                 if (objType != null)
                 {
-                    JavaScriptValue jsVal = new();
+                    var jsVal = new JavaScriptValue("未识别的数据类型");
                     string propertyType = prop.PropertyType.Name.ToLower();
                     switch (propertyType)
                     {
                         case "string":
                             jsVal = new JavaScriptValue((string)prop.GetValue(registerObj)); break;
+                        case "bool":
+                            jsVal = new JavaScriptValue((bool)prop.GetValue(registerObj)); break;
                         case "int16":
                             jsVal = new JavaScriptValue((short)prop.GetValue(registerObj)); break;
                         case "int32":
@@ -67,73 +69,136 @@ namespace FFvideoConverter
                         case "javascriptarray":
                             jsVal = (JavaScriptArray)prop.GetValue(registerObj); break;
                     }
-                    if (objType.Propertie == JsObjectType.PropertieType.ReadOnly)
+                    if (objType.Propertie == JsObjectType.PropertieType.Const)
                     {
+                        // 注册常量
+                        jsObj.Add(prop.Name, jsVal);
+                    }
+                    else if (objType.Propertie == JsObjectType.PropertieType.ReadOnly)
+                    {
+                        // 注册只读属性
                         jsObj.DefineProperty(prop.Name, () => jsVal);
                     }
                     else if (objType.Propertie == JsObjectType.PropertieType.ReadWrite)
                     {
-                        jsObj.DefineProperty(prop.Name, () => jsVal, (val) => { val.ToObject(); });
-                    }
-                    else if (objType.Propertie == JsObjectType.PropertieType.Const)
-                    {
-                        jsObj.Add(prop.Name, jsVal);
+                        // 注册可读写属性
+                        jsObj.DefineProperty(prop.Name, () => jsVal, (val) => 
+                        {
+                            switch (propertyType)
+                            {
+                                case "string":
+                                    prop.SetValue(registerObj, val.GetString());
+                                    break;
+                                case "bool":
+                                    prop.SetValue(registerObj, val.GetBool());
+                                    break;
+                                case "int16":
+                                    prop.SetValue(registerObj, val.GetInt());
+                                    break;
+                                case "int32":
+                                    prop.SetValue(registerObj, val.GetInt());
+                                    break;
+                                case "int64":
+                                    prop.SetValue(registerObj, val.GetInt());
+                                    break;
+                                case "single":
+                                    prop.SetValue(registerObj, val.GetDouble());
+                                    break;
+                                case "double":
+                                    prop.SetValue(registerObj, val.GetDouble());
+                                    break;
+                                case "datetime":
+                                    prop.SetValue(registerObj, val.GetDateTime());
+                                    break;
+                                case "javascriptarray":
+                                    prop.SetValue(registerObj, val.ToArray());
+                                    break;
+                                default:
+                                    throw new Exception("找不到要写入数据的类型");
+                            }
+                        });
                     }
                 }
             }
+
             //获取所有方法。
             MethodInfo[] methods = jsObjType.GetMethods();
-            //遍历方法打印到控制台。
+            //遍历方法
             foreach (MethodInfo method in methods)
             {
-                var aa = method.Attributes;
-                if (!aa.HasFlag(MethodAttributes.SpecialName))
+                JsObjectType? objType = (JsObjectType?)method.GetCustomAttribute(typeof(JsObjectType));
+                if (objType != null)
                 {
-                    JsObjectType? objType = (JsObjectType?)method.GetCustomAttribute(typeof(JsObjectType));
-                    Console.WriteLine(method.Name);
-                    if (objType != null)
+                    if(objType.Method == JsObjectType.MethodType.Sync)
                     {
-                        if(objType.Method == JsObjectType.MethodType.Sync)
+                        // 注册同步方法
+                        jsObj.Add(method.Name, args =>
                         {
-                            jsObj.Add(method.Name, args =>
+                            object? ret = null;
+                            if (objType.UsedWindowHwnd)
                             {
-                                object? ret = null;
-                                if (objType.UsedWindowHwnd)
+                                _formium.InvokeIfRequired(() =>
                                 {
-                                    _formium.InvokeIfRequired(() =>
-                                    {
-                                        ret = method.Invoke(registerObj, ParamesToObjectArry(args, true));
-                                    });
-                                }
-                                else
-                                {
-                                    ret = method.Invoke(registerObj, ParamesToObjectArry(args));
-                                }
-                                if(ret == null) return new JavaScriptValue();
-                                string retType = ret.GetType().Name.ToLower();
+                                    ret = method.Invoke(registerObj, ParamesToObjectArry(args, true));
+                                });
+                            }
+                            else
+                            {
+                                ret = method.Invoke(registerObj, ParamesToObjectArry(args));
+                            }
+                            if(ret == null) return new JavaScriptValue();
+                            string retType = ret.GetType().Name.ToLower();
+                            return retType switch
+                            {
+                                "string" => new JavaScriptValue((string)ret),
+                                "bool" => new JavaScriptValue((bool)ret),
+                                "int16" => new JavaScriptValue((short)ret),
+                                "int32" => new JavaScriptValue((int)ret),
+                                "int64" => new JavaScriptValue((long)ret),
+                                "single" => new JavaScriptValue((float)ret),
+                                "double" => new JavaScriptValue((double)ret),
+                                "datetime" => new JavaScriptValue((DateTime)ret),
+                                _ => new JavaScriptValue(),
+                            };
+                        });
+                    }
+                    else if(objType.Method == JsObjectType.MethodType.Async)
+                    {
+                        // 注册异步方法
+                        jsObj.Add(method.Name, async (args, promise) =>
+                        {
+                            var ret = await Task.Run(() => 
+                            {
+                                return method.Invoke(registerObj, ParamesToObjectArry(args));
+                            });
+                            string retType = method.ReturnType.Name.ToLower();
+                            if (ret != null)
+                            {
                                 switch (retType)
                                 {
                                     case "string":
-                                        return new JavaScriptValue((string)ret);
+                                        promise.Resovle(new JavaScriptValue((string)ret)); break;
+                                    case "bool":
+                                        promise.Resovle(new JavaScriptValue((bool)ret)); break;
                                     case "int16":
-                                        return new JavaScriptValue((short)ret);
+                                        promise.Resovle(new JavaScriptValue((short)ret)); break;
                                     case "int32":
-                                        return new JavaScriptValue((int)ret);
+                                        promise.Resovle(new JavaScriptValue((int)ret)); break;
                                     case "int64":
-                                        return new JavaScriptValue((long)ret);
+                                        promise.Resovle(new JavaScriptValue((long)ret)); break;
                                     case "single":
-                                        return new JavaScriptValue((float)ret);
+                                        promise.Resovle(new JavaScriptValue((float)ret)); break;
                                     case "double":
-                                        return new JavaScriptValue((double)ret);
+                                        promise.Resovle(new JavaScriptValue((double)ret)); break;
                                     case "datetime":
-                                        return new JavaScriptValue((DateTime)ret);
+                                        promise.Resovle(new JavaScriptValue((DateTime)ret)); break;
                                     default:
-                                        return new JavaScriptValue();
+                                        promise.Reject("方法失败");
+                                        break;
                                 }
                                 
-                            });
-
-                        }
+                            }
+                        });
                     }
                 }
             }

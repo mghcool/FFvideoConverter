@@ -33,5 +33,12 @@ namespace FFvideoConverter
             MessageBox.Show(hwnd, "hhh", "Message from JS", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return "ok";
         }
+
+        [JsObjectType(JsObjectType.MethodType.Async)]
+        public string TestAsync()
+        {
+            Thread.Sleep(2000);
+            return "测试通过";
+        }
     }
 }
