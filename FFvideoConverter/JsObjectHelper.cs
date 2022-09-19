@@ -170,18 +170,18 @@ namespace FFvideoConverter
         private JavaScriptValue? ObjectToJsVal(Type type, object? val)
         {
             if(val == null) return null;
-            string dateType = type.Name.ToLower();
+            var dateType = ToolHelper.TypeToEnum<JsDataType>(type);
             return dateType switch
             {
-                "string" => new JavaScriptValue((string)val),
-                "bool" => new JavaScriptValue((bool)val),
-                "int16" => new JavaScriptValue((short)val),
-                "int32" => new JavaScriptValue((int)val),
-                "int64" => new JavaScriptValue((long)val),
-                "single" => new JavaScriptValue((float)val),
-                "double" => new JavaScriptValue((double)val),
-                "datetime" => new JavaScriptValue((DateTime)val),
-                "javascriptarray" => (JavaScriptArray)val,
+                JsDataType.String => new JavaScriptValue((string)val),
+                JsDataType.Bool => new JavaScriptValue((bool)val),
+                JsDataType.Int16 => new JavaScriptValue((short)val),
+                JsDataType.Int32 => new JavaScriptValue((int)val),
+                JsDataType.Int64 => new JavaScriptValue((long)val),
+                JsDataType.Single => new JavaScriptValue((float)val),
+                JsDataType.Double => new JavaScriptValue((double)val),
+                JsDataType.DateTime => new JavaScriptValue((DateTime)val),
+                JsDataType.JavaScriptArray => (JavaScriptArray)val,
                 _ => null,
             };
         }
@@ -195,18 +195,18 @@ namespace FFvideoConverter
         private object? JsValToObject(Type type, JavaScriptValue val)
         {
             if (val == null) return null;
-            string dateType = type.Name.ToLower();
+            var dateType = ToolHelper.TypeToEnum<JsDataType>(type);
             return dateType switch
             {
-                "string" => val.GetString(),
-                "bool" => val.GetBool(),
-                "int16" => Convert.ToInt16(val.GetInt()),
-                "int32" => val.GetInt(),
-                "int64" => Convert.ToInt64(val.GetInt()),
-                "single" => Convert.ToSingle(val.GetDouble()),
-                "double" => val.GetDouble(),
-                "datetime" => val.GetDateTime(),
-                "javascriptarray" => (JavaScriptArray)val,
+                JsDataType.String => val.GetString(),
+                JsDataType.Bool => val.GetBool(),
+                JsDataType.Int16 => Convert.ToInt16(val.GetInt()),
+                JsDataType.Int32 => val.GetInt(),
+                JsDataType.Int64 => Convert.ToInt64(val.GetInt()),
+                JsDataType.Single => Convert.ToSingle(val.GetDouble()),
+                JsDataType.Double => val.GetDouble(),
+                JsDataType.DateTime => val.GetDateTime(),
+                JsDataType.JavaScriptArray => (JavaScriptArray)val,
                 _ => new JavaScriptValue("获取值失败"),
             };
         }
@@ -223,56 +223,57 @@ namespace FFvideoConverter
             List<object> result = new();
             for (int i = 0; i < argsInfo.Length; i++)
             {
-                string argType = argsInfo[i].ParameterType.Name.ToLower();
+                //string argType = argsInfo[i].ParameterType.Name.ToLower();
+                var argType = ToolHelper.TypeToEnum<JsDataType>(argsInfo[i].ParameterType);
                 // 验证参数
                 switch (argType)
                 {
-                    case "string":
+                    case JsDataType.String:
                         if(!args[i].IsString) return null; break;
-                    case "bool":
+                    case JsDataType.Bool:
                         if (!args[i].IsBool) return null; break;
-                    case "int16":
-                    case "int32":
-                    case "int64":
-                    case "single":
-                    case "double":
+                    case JsDataType.Int16:
+                    case JsDataType.Int32:
+                    case JsDataType.Int64:
+                    case JsDataType.Single:
+                    case JsDataType.Double:
                         if (!args[i].IsNumber) return null; break;
-                    case "datetime":
+                    case JsDataType.DateTime:
                         if (!args[i].IsDateTime) return null; break;
-                    case "javascriptarray":
+                    case JsDataType.JavaScriptArray:
                         if (!args[i].IsArray) return null; break;
                 }
                 // 转换参数
                 switch (argType)
                 {
-                    case "string":
+                    case JsDataType.String:
                         result.Add(args[i].GetString());
                         break;
-                    case "bool":
+                    case JsDataType.Bool:
                         result.Add(args[i].GetBool());
                         break;
-                    case "int16":
+                    case JsDataType.Int16:
                         result.Add(Convert.ToInt16(args[i].GetInt()));
                         break;
-                    case "int32":
+                    case JsDataType.Int32:
                         result.Add(args[i].GetInt());
                         break;
-                    case "int64":
+                    case JsDataType.Int64:
                         result.Add(Convert.ToInt64(args[i].GetInt()));
                         break;
-                    case "single":
+                    case JsDataType.Single:
                         result.Add(Convert.ToSingle(args[i].GetDouble()));
                         break;
-                    case "double":
+                    case JsDataType.Double:
                         result.Add(args[i].GetDouble());
                         break;
-                    case "datetime":
+                    case JsDataType.DateTime:
                         result.Add(args[i].GetDateTime());
                         break;
-                    case "javascriptarray":
+                    case JsDataType.JavaScriptArray:
                         result.Add(args[i].ToArray());
                         break;
-                    case "iwin32window":
+                    case JsDataType.IWin32Window:
                         result.Add(_formium.WindowHWND);
                         break;
                     default:
