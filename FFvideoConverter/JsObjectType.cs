@@ -3,7 +3,7 @@
     /// <summary>
     /// js注册对象属性和方法类型特性类
     /// </summary>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field)]
     public class JsObjectType : Attribute
     {
         /// <summary>

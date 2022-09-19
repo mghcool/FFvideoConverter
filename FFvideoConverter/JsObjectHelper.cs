@@ -34,170 +34,124 @@ namespace FFvideoConverter
         /// </summary>
         /// <param name="name">注册的名称</param>
         /// <param name="registerObj">要注册的对象</param>
-        public void Register(string name, object registerObj)
+        public void Register<T>(string name, T registerObj)
         {
             var jsObj = new JavaScriptObject();
-            Type jsObjType = registerObj.GetType();
-            //获取所有属性
-            PropertyInfo[] properties = jsObjType.GetProperties();
-            // 遍历属性
-            foreach (PropertyInfo prop in properties)
+            Type jsObjType = typeof(T);
+            MemberInfo[] members = jsObjType.GetMembers();
+            foreach(var member in members)
             {
-                JsObjectType? objType = (JsObjectType?)prop.GetCustomAttribute(typeof(JsObjectType));
-                if (objType != null)
+                // 获取成员特性
+                var memberAttr = (JsObjectType?)member.GetCustomAttribute(typeof(JsObjectType));
+                // 忽略没有标记特性的成员
+                if(memberAttr == null) continue;
+                // 成员名称
+                var memberName = member.Name;
+                // 注册属性和字段
+                if (member.MemberType == MemberTypes.Property || member.MemberType == MemberTypes.Field)
                 {
-                    var jsVal = new JavaScriptValue("未识别的数据类型");
-                    string propertyType = prop.PropertyType.Name.ToLower();
-                    switch (propertyType)
+                    // 获取属性、字段和数据类型
+                    PropertyInfo prop = null;   // 属性对象
+                    FieldInfo field = null;     // 字段对象
+                    Type memberType = null;     // 成员类型
+                    if (member.MemberType == MemberTypes.Property)
                     {
-                        case "string":
-                            jsVal = new JavaScriptValue((string)prop.GetValue(registerObj)); break;
-                        case "bool":
-                            jsVal = new JavaScriptValue((bool)prop.GetValue(registerObj)); break;
-                        case "int16":
-                            jsVal = new JavaScriptValue((short)prop.GetValue(registerObj)); break;
-                        case "int32":
-                            jsVal = new JavaScriptValue((int)prop.GetValue(registerObj)); break;
-                        case "int64":
-                            jsVal = new JavaScriptValue((long)prop.GetValue(registerObj)); break;
-                        case "single":
-                            jsVal = new JavaScriptValue((float)prop.GetValue(registerObj)); break;
-                        case "double":
-                            jsVal = new JavaScriptValue((double)prop.GetValue(registerObj)); break;
-                        case "datetime":
-                            jsVal = new JavaScriptValue((DateTime)prop.GetValue(registerObj)); break;
-                        case "javascriptarray":
-                            jsVal = (JavaScriptArray)prop.GetValue(registerObj); break;
+                        prop = (PropertyInfo)member;
+                        memberType = prop.PropertyType;
                     }
-                    if (objType.Propertie == JsObjectType.PropertieType.Const)
+                    else
+                    {
+                        field = (FieldInfo)member;
+                        memberType = field.FieldType;
+                    }
+                    // 开始注册属性和字段
+                    if (memberAttr.Propertie == JsObjectType.PropertieType.Const)
                     {
                         // 注册常量
-                        jsObj.Add(prop.Name, jsVal);
+                        if(member.MemberType == MemberTypes.Property)
+                            jsObj.Add(memberName, ObjectToJsVal(memberType, prop.GetValue(registerObj)));
+                        else
+                            jsObj.Add(memberName, ObjectToJsVal(memberType, field.GetValue(registerObj)));
                     }
-                    else if (objType.Propertie == JsObjectType.PropertieType.ReadOnly)
+                    else if (memberAttr.Propertie == JsObjectType.PropertieType.ReadOnly)
                     {
                         // 注册只读属性
-                        jsObj.DefineProperty(prop.Name, () => jsVal);
+                        if (member.MemberType == MemberTypes.Property)
+                            jsObj.DefineProperty(memberName, () => ObjectToJsVal(memberType, prop.GetValue(registerObj)));
+                        else
+                            jsObj.DefineProperty(memberName, () => ObjectToJsVal(memberType, field.GetValue(registerObj)));
                     }
-                    else if (objType.Propertie == JsObjectType.PropertieType.ReadWrite)
+                    else if (memberAttr.Propertie == JsObjectType.PropertieType.ReadWrite)
                     {
                         // 注册可读写属性
-                        jsObj.DefineProperty(prop.Name, () => jsVal, (val) => 
-                        {
-                            switch (propertyType)
-                            {
-                                case "string":
-                                    prop.SetValue(registerObj, val.GetString());
-                                    break;
-                                case "bool":
-                                    prop.SetValue(registerObj, val.GetBool());
-                                    break;
-                                case "int16":
-                                    prop.SetValue(registerObj, val.GetInt());
-                                    break;
-                                case "int32":
-                                    prop.SetValue(registerObj, val.GetInt());
-                                    break;
-                                case "int64":
-                                    prop.SetValue(registerObj, val.GetInt());
-                                    break;
-                                case "single":
-                                    prop.SetValue(registerObj, val.GetDouble());
-                                    break;
-                                case "double":
-                                    prop.SetValue(registerObj, val.GetDouble());
-                                    break;
-                                case "datetime":
-                                    prop.SetValue(registerObj, val.GetDateTime());
-                                    break;
-                                case "javascriptarray":
-                                    prop.SetValue(registerObj, val.ToArray());
-                                    break;
-                                default:
-                                    throw new Exception("找不到要写入数据的类型");
-                            }
-                        });
+                        if (member.MemberType == MemberTypes.Property)
+                            jsObj.DefineProperty(memberName,
+                            () => ObjectToJsVal(memberType, prop.GetValue(registerObj)),
+                            (val) => prop.SetValue(registerObj, JsValToObject(memberType, val)));
+                        else
+                            jsObj.DefineProperty(memberName,
+                            () => ObjectToJsVal(memberType, field.GetValue(registerObj)),
+                            (val) => field.SetValue(registerObj, JsValToObject(memberType, val)));
                     }
                 }
-            }
-
-            //获取所有方法。
-            MethodInfo[] methods = jsObjType.GetMethods();
-            //遍历方法
-            foreach (MethodInfo method in methods)
-            {
-                JsObjectType? objType = (JsObjectType?)method.GetCustomAttribute(typeof(JsObjectType));
-                if (objType != null)
+                // 注册方法
+                else if (member.MemberType == MemberTypes.Method)
                 {
-                    if(objType.Method == JsObjectType.MethodType.Sync)
+                    MethodInfo method = (MethodInfo)member;
+                    Type returnType = method.ReturnType;
+                    if (memberAttr.Method == JsObjectType.MethodType.Sync)
                     {
                         // 注册同步方法
-                        jsObj.Add(method.Name, args =>
+                        jsObj.Add(memberName, args =>
                         {
                             object? ret = null;
-                            if (objType.UsedWindowHwnd)
+                            // 转换参数
+                            object[] parameters = ParamesToObjectArry(method.GetParameters(), args);
+                            if (parameters == null) return new JavaScriptValue("参数错误");
+
+                            if (memberAttr.UsedWindowHwnd)  // 使用窗口句柄
                             {
                                 _formium.InvokeIfRequired(() =>
                                 {
-                                    ret = method.Invoke(registerObj, ParamesToObjectArry(args, true));
+                                    ret = method.Invoke(registerObj, parameters);
                                 });
                             }
                             else
                             {
-                                ret = method.Invoke(registerObj, ParamesToObjectArry(args));
+                                ret = method.Invoke(registerObj, parameters);
                             }
-                            if(ret == null) return new JavaScriptValue();
-                            string retType = ret.GetType().Name.ToLower();
-                            return retType switch
-                            {
-                                "string" => new JavaScriptValue((string)ret),
-                                "bool" => new JavaScriptValue((bool)ret),
-                                "int16" => new JavaScriptValue((short)ret),
-                                "int32" => new JavaScriptValue((int)ret),
-                                "int64" => new JavaScriptValue((long)ret),
-                                "single" => new JavaScriptValue((float)ret),
-                                "double" => new JavaScriptValue((double)ret),
-                                "datetime" => new JavaScriptValue((DateTime)ret),
-                                _ => new JavaScriptValue(),
-                            };
+
+                            var val = ObjectToJsVal(returnType, ret);
+                            if (val != null) return val;
+                            else return new JavaScriptValue();
                         });
                     }
-                    else if(objType.Method == JsObjectType.MethodType.Async)
+                    else if (memberAttr.Method == JsObjectType.MethodType.Async)
                     {
                         // 注册异步方法
-                        jsObj.Add(method.Name, async (args, promise) =>
+                        jsObj.Add(memberName, async (args, promise) =>
                         {
-                            var ret = await Task.Run(() => 
+                            object[] parameters = ParamesToObjectArry(method.GetParameters(), args);
+                            if (parameters == null)
                             {
-                                return method.Invoke(registerObj, ParamesToObjectArry(args));
-                            });
-                            string retType = method.ReturnType.Name.ToLower();
-                            if (ret != null)
-                            {
-                                switch (retType)
-                                {
-                                    case "string":
-                                        promise.Resovle(new JavaScriptValue((string)ret)); break;
-                                    case "bool":
-                                        promise.Resovle(new JavaScriptValue((bool)ret)); break;
-                                    case "int16":
-                                        promise.Resovle(new JavaScriptValue((short)ret)); break;
-                                    case "int32":
-                                        promise.Resovle(new JavaScriptValue((int)ret)); break;
-                                    case "int64":
-                                        promise.Resovle(new JavaScriptValue((long)ret)); break;
-                                    case "single":
-                                        promise.Resovle(new JavaScriptValue((float)ret)); break;
-                                    case "double":
-                                        promise.Resovle(new JavaScriptValue((double)ret)); break;
-                                    case "datetime":
-                                        promise.Resovle(new JavaScriptValue((DateTime)ret)); break;
-                                    default:
-                                        promise.Reject("方法失败");
-                                        break;
-                                }
-                                
+                                promise.Reject("参数错误");
+                                return;
                             }
+                            var ret = await Task.Run(() =>
+                            {
+                                return method.Invoke(registerObj, ParamesToObjectArry(method.GetParameters(), args));
+                            });
+                            if(returnType.Name.ToLower() == "void")
+                            {
+                                promise.Resovle();
+                                return;
+                            }
+                                
+                            var val = ObjectToJsVal(returnType, ret);
+                            if (val != null) 
+                                promise.Resovle(val);
+                            else 
+                                promise.Reject("方法失败");
                         });
                     }
                 }
@@ -207,22 +161,122 @@ namespace FFvideoConverter
         }
 
         /// <summary>
-        /// 参数转换
+        /// Object转JavaScriptValue
         /// </summary>
+        /// <param name="type">属性或方法返回值的类型</param>
+        /// <param name="val">要转换的值</param>
+        /// <returns>结果对象，转换失败返回null</returns>
+        private JavaScriptValue? ObjectToJsVal(Type type, object? val)
+        {
+            if(val == null) return null;
+            string dateType = type.Name.ToLower();
+            return dateType switch
+            {
+                "string" => new JavaScriptValue((string)val),
+                "bool" => new JavaScriptValue((bool)val),
+                "int16" => new JavaScriptValue((short)val),
+                "int32" => new JavaScriptValue((int)val),
+                "int64" => new JavaScriptValue((long)val),
+                "single" => new JavaScriptValue((float)val),
+                "double" => new JavaScriptValue((double)val),
+                "datetime" => new JavaScriptValue((DateTime)val),
+                "javascriptarray" => (JavaScriptArray)val,
+                _ => null,
+            };
+        }
+
+        /// <summary>
+        /// JavaScriptValue转Object
+        /// </summary>
+        /// <param name="type">属性或方法返回值的类型</param>
+        /// <param name="val">要转换的值</param>
+        /// <returns>结果对象，转换失败返回null</returns>
+        private object? JsValToObject(Type type, JavaScriptValue val)
+        {
+            if (val == null) return null;
+            string dateType = type.Name.ToLower();
+            return dateType switch
+            {
+                "string" => val.GetString(),
+                "bool" => val.GetBool(),
+                "int16" => Convert.ToInt16(val.GetInt()),
+                "int32" => val.GetInt(),
+                "int64" => Convert.ToInt64(val.GetInt()),
+                "single" => Convert.ToSingle(val.GetDouble()),
+                "double" => val.GetDouble(),
+                "datetime" => val.GetDateTime(),
+                "javascriptarray" => (JavaScriptArray)val,
+                _ => new JavaScriptValue("获取值失败"),
+            };
+        }
+
+        /// <summary>
+        /// 方法参数转换
+        /// </summary>
+        /// <param name="argsInfo">原始方法的参数信息</param>
         /// <param name="args">前端传过来的参数</param>
         /// <param name="usedWindowHwnd">是否使用窗口句柄</param>
-        /// <returns>参数对象</returns>
-        private object[] ParamesToObjectArry(JavaScriptArray args, bool usedWindowHwnd = false)
+        /// <returns>参数对象，如果参数不符合，返回null</returns>
+        private object[]? ParamesToObjectArry(ParameterInfo[] argsInfo, JavaScriptArray args)
         {
-            List<object> result = new ();
-            if (usedWindowHwnd) result.Add(_formium.WindowHWND);
-            foreach (JavaScriptValue arg in args)
+            List<object> result = new();
+            for (int i = 0; i < argsInfo.Length; i++)
             {
-                if (arg.IsBool) result.Add(arg.GetBool());
-                else if (arg.IsString) result.Add(arg.GetString());
-                //else if (arg.IsNumber) result.Add(arg.GetInt());
-                else if (arg.IsNumber) result.Add(arg.GetDouble());
-                else if (arg.IsDateTime) result.Add(arg.GetDateTime());
+                string argType = argsInfo[i].ParameterType.Name.ToLower();
+                // 验证参数
+                switch (argType)
+                {
+                    case "string":
+                        if(!args[i].IsString) return null; break;
+                    case "bool":
+                        if (!args[i].IsBool) return null; break;
+                    case "int16":
+                    case "int32":
+                    case "int64":
+                    case "single":
+                    case "double":
+                        if (!args[i].IsNumber) return null; break;
+                    case "datetime":
+                        if (!args[i].IsDateTime) return null; break;
+                    case "javascriptarray":
+                        if (!args[i].IsArray) return null; break;
+                }
+                // 转换参数
+                switch (argType)
+                {
+                    case "string":
+                        result.Add(args[i].GetString());
+                        break;
+                    case "bool":
+                        result.Add(args[i].GetBool());
+                        break;
+                    case "int16":
+                        result.Add(Convert.ToInt16(args[i].GetInt()));
+                        break;
+                    case "int32":
+                        result.Add(args[i].GetInt());
+                        break;
+                    case "int64":
+                        result.Add(Convert.ToInt64(args[i].GetInt()));
+                        break;
+                    case "single":
+                        result.Add(Convert.ToSingle(args[i].GetDouble()));
+                        break;
+                    case "double":
+                        result.Add(args[i].GetDouble());
+                        break;
+                    case "datetime":
+                        result.Add(args[i].GetDateTime());
+                        break;
+                    case "javascriptarray":
+                        result.Add(args[i].ToArray());
+                        break;
+                    case "iwin32window":
+                        result.Add(_formium.WindowHWND);
+                        break;
+                    default:
+                        return null;
+                }
             }
             return result.ToArray();
         }

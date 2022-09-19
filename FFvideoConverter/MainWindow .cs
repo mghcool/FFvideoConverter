@@ -71,7 +71,7 @@ namespace FFvideoConverter
             // 注册js对象
             RegisterJavaScriptObject();
             JsObjTest jsObjTest = new JsObjTest();
-            jsObjTest.OutputTypes = Settings.OutputTypes;
+            //jsObjTest.OutputTypes = Settings.OutputTypes;
             JsObjectHelper jsObjectHelper = new JsObjectHelper(this);
             jsObjectHelper.Register("TestObject", jsObjTest);
         }
