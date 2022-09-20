@@ -3,6 +3,7 @@ using NetDimension.NanUI;
 using NetDimension.NanUI.JavaScript;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -87,16 +88,16 @@ namespace FFvideoConverter
         /// <returns>媒体信息数组</returns>
         /// <exception cref="Exception"></exception>
         [JsObjectType(JsObjectType.MethodType.Async)]
-        public JavaScriptArray? GetMediaInfo(string fileName)
+        public JavaScriptJsonValue? GetMediaInfo(string fileName)
         {
             if(!File.Exists(fileName)) throw new Exception("视频文件未找到！");
             string[] mediaInfo = _ffmpeg.GetMediaInfo(fileName);
-            return new JavaScriptArray()
+            return new JavaScriptJsonValue(new
             {
-                mediaInfo[0],
-                mediaInfo[1],
-                mediaInfo[2]
-            };
+                VideoInfo = mediaInfo[0],
+                AudioInfo = mediaInfo[1],
+                SubtitleInfo = mediaInfo[2]
+            });
         }
 
         /// <summary>
@@ -122,6 +123,30 @@ namespace FFvideoConverter
             _ffmpeg.ConvertProgress = 0;
         }
 
+        // 测试类型
+        class TestObj
+        {
+            public string Name { get; set; }
+            public int Age { get; set; }
+            public DateTime Time { get; set; }
+        }
+
+        /// <summary>
+        /// 测试js和C#对象互传
+        /// </summary>
+        /// <param name="jsVal">js对象</param>
+        /// <returns>转换成C#对象后再传出</returns>
+        [JsObjectType(JsObjectType.MethodType.Sync)]
+        public JavaScriptJsonValue TestJsObject(JavaScriptObject jsVal)
+        {
+            var testobj = jsVal.ToObject<TestObj>();
+            return new JavaScriptJsonValue(testobj);
+        }
+
+        /// <summary>
+        /// 测试执行js命令
+        /// </summary>
+        /// <param name="msg"></param>
         [JsObjectType(JsObjectType.MethodType.Sync)]
         public void TestJavaScript(string msg)
         {

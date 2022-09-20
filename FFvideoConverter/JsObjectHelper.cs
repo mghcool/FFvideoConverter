@@ -161,7 +161,7 @@ namespace FFvideoConverter
         }
 
         /// <summary>
-        /// Object转JavaScriptValue
+        /// 将C#返回值转为js相应值（Object转JavaScriptValue）
         /// </summary>
         /// <param name="type">属性或方法返回值的类型</param>
         /// <param name="val">要转换的值</param>
@@ -182,12 +182,13 @@ namespace FFvideoConverter
                 JsDataType.Double => new JavaScriptValue((double)val),
                 JsDataType.DateTime => new JavaScriptValue((DateTime)val),
                 JsDataType.JavaScriptArray => (JavaScriptArray)val,
+                JsDataType.JavaScriptJsonValue => (JavaScriptJsonValue)val, // C#方法返回js对象
                 _ => null,
             };
         }
 
         /// <summary>
-        /// JavaScriptValue转Object
+        /// 将js传的值转为C#相应类型的值（JavaScriptValue转Object）
         /// </summary>
         /// <param name="type">属性或方法返回值的类型</param>
         /// <param name="val">要转换的值</param>
@@ -198,6 +199,8 @@ namespace FFvideoConverter
             var dateType = ToolHelper.TypeToEnum<JsDataType>(type);
             return dateType switch
             {
+                JsDataType.Object => val,
+                JsDataType.JavaScriptValue => val,
                 JsDataType.String => val.GetString(),
                 JsDataType.Boolean => val.GetBool(),
                 JsDataType.Int16 => Convert.ToInt16(val.GetInt()),
@@ -207,23 +210,24 @@ namespace FFvideoConverter
                 JsDataType.Double => val.GetDouble(),
                 JsDataType.DateTime => val.GetDateTime(),
                 JsDataType.JavaScriptArray => (JavaScriptArray)val,
-                _ => new JavaScriptValue("获取值失败"),
+                JsDataType.JavaScriptObject => (JavaScriptObject)val,   // C#方法入参js对象
+                _ => null,
             };
         }
 
         /// <summary>
-        /// 方法参数转换
+        /// 将js传入的参数转换为C#可接受的参数
         /// </summary>
-        /// <param name="argsInfo">原始方法的参数信息</param>
-        /// <param name="args">前端传过来的参数</param>
-        /// <param name="usedWindowHwnd">是否使用窗口句柄</param>
+        /// <param name="argsInfo">C#方法的参数信息</param>
+        /// <param name="args">js传过来的参数</param>
         /// <returns>参数对象，如果参数不符合，返回null</returns>
         private object[]? ParamesToObjectArry(ParameterInfo[] argsInfo, JavaScriptArray args)
         {
             List<object> result = new();
             for (int i = 0; i < argsInfo.Length; i++)
             {
-                var argType = ToolHelper.TypeToEnum<JsDataType>(argsInfo[i].ParameterType);
+                Type type = argsInfo[i].ParameterType;
+                var argType = ToolHelper.TypeToEnum<JsDataType>(type);
                 // 验证参数
                 if(argsInfo.Length > args.Count) return null;
                 switch (argType)
@@ -246,34 +250,7 @@ namespace FFvideoConverter
                         if (!args[i].IsArray) return null; break;
                 }
                 // 转换参数
-                switch (argType)
-                {
-                    case JsDataType.Object:
-                    case JsDataType.JavaScriptValue:
-                        result.Add(args[i]); break;
-                    case JsDataType.String:
-                        result.Add(args[i].GetString()); break;
-                    case JsDataType.Boolean:
-                        result.Add(args[i].GetBool()); break;
-                    case JsDataType.Int16:
-                        result.Add(Convert.ToInt16(args[i].GetInt())); break;
-                    case JsDataType.Int32:
-                        result.Add(args[i].GetInt()); break;
-                    case JsDataType.Int64:
-                        result.Add(Convert.ToInt64(args[i].GetInt())); break;
-                    case JsDataType.Single:
-                        result.Add(Convert.ToSingle(args[i].GetDouble())); break;
-                    case JsDataType.Double:
-                        result.Add(args[i].GetDouble()); break;
-                    case JsDataType.DateTime:
-                        result.Add(args[i].GetDateTime()); break;
-                    case JsDataType.JavaScriptArray:
-                        result.Add(args[i].ToArray()); break;
-                    case JsDataType.JavaScriptJsonValue:
-                        result.Add(args[i].ToJsonVaue()); break;
-                    default:
-                        return null;
-                }
+                result.Add(JsValToObject(type, args[i]));
             }
             return result.ToArray();
         }

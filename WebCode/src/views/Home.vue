@@ -253,9 +253,9 @@ const onDialogOpen = () => {    // 媒体信息弹窗打开
     showMediaLoading.value = true
     new Promise(Formium.external.SharpObject.GetMediaInfo(inputFile.value))
         .then(ret => {
-            mediaInfo.value.video.content = ret[0]
-            mediaInfo.value.audio.content = ret[1]
-            mediaInfo.value.subtitle.content = ret[2]
+            mediaInfo.value.video.content = ret.VideoInfo
+            mediaInfo.value.audio.content = ret.AudioInfo
+            mediaInfo.value.subtitle.content = ret.SubtitleInfo
             showMediaLoading.value = false
         })
         .catch(err => {

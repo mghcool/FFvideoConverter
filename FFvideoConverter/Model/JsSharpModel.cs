@@ -1,9 +1,17 @@
-﻿using NetDimension.NanUI;
+﻿/*****************************************************************************
+ * 使用说明：
+ * C#方法接收Js对象参数时，需要使用 JavaScriptObject 类型
+ * C#方法返回Js对象时，返回值应是 JavaScriptJsonValue 类型
+ * **************************************************************************/
+using NetDimension.NanUI;
 using NetDimension.NanUI.JavaScript;
 using Xilium.CefGlue;
 
 namespace FFvideoConverter.Model
 {
+    /// <summary>
+    /// Js和C#互相操作的基类
+    /// </summary>
     public class JsSharpModel
     {
         private Formium _formium;

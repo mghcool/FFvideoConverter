@@ -67,7 +67,7 @@ namespace FFvideoConverter
         /// 获取媒体信息
         /// </summary>
         /// <param name="file">媒体路径</param>
-        /// <returns>[0]是视频信息，[1]是音频信息</returns>
+        /// <returns>[0]是视频信息，[1]是音频信息，[2]是字幕信息</returns>
         public string[] GetMediaInfo(string file)
         {
             string videoInfo = Probe.New().Start($"-hide_banner -pretty -of json -show_streams -select_streams v \"{file}\"").Result;
