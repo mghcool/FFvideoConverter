@@ -20,7 +20,6 @@
         JavaScriptArray,
         JavaScriptValue,
         JavaScriptJsonValue,
-        JavaScriptObject,
-        IWin32Window
+        JavaScriptObject
     }
 }

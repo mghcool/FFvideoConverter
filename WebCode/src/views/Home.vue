@@ -223,6 +223,14 @@ onMounted(() => {
     Object.keys(audioArgs.value).forEach(key => {
         audioArgs.value[key].selected = audioArgs.value[key].list[0]
     })
+    window.vue = {
+        MessageShow: function(title, msg) { 
+            ElMessageBox.alert(msg, title, {
+                confirmButtonText: '确认'
+            }) 
+        },
+        showMediaInfo: showMediaInfo
+    }
 })
 
 /* watch *************************************************/

@@ -11,8 +11,6 @@ namespace FFvideoConverter
 {
     internal class MainWindow : Formium
     {
-        readonly FFmpegHelper ffmpegHelper = new FFmpegHelper();
-
         // 设置窗体样式类型
         public override HostWindowType WindowType => HostWindowType.Borderless;
         // 指定启动 Url
@@ -41,8 +39,6 @@ namespace FFvideoConverter
             this.CustomizeMaskPanel();
         }
 
-        
-
         // 创建启动页面
         private void CustomizeMaskPanel()
         {
@@ -70,7 +66,7 @@ namespace FFvideoConverter
         {
             // 注册js对象
             var jsObjectHelper = new JsObjectHelper(this);
-            jsObjectHelper.Register("SharpObject", new FFmpegOperate(this));
+            jsObjectHelper.Register("SharpObject", new FFmpegOperate());
         }
     }
 }

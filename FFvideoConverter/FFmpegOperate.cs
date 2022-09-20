@@ -11,19 +11,9 @@ using System.Threading.Tasks;
 
 namespace FFvideoConverter
 {
-    public class FFmpegOperate
+    public class FFmpegOperate: JsSharpModel
     {
-        private Formium _formium;
         private FFmpegHelper _ffmpeg = new ();
-
-        /// <summary>
-        /// 创建一个ffmpeg前端操作类
-        /// </summary>
-        /// <param name="formium">窗体对象</param>
-        public FFmpegOperate(Formium formium)
-        {
-            _formium = formium;
-        }
 
         #region 注册的变量
         /// <summary>
@@ -48,9 +38,9 @@ namespace FFvideoConverter
         /// 打开调试工具
         /// </summary>
         [JsObjectType(JsObjectType.MethodType.Sync)]
-        public void ShowDevTools()
+        public void ShowDevTool()
         {
-            _formium.ShowDevTools();
+            ShowDevTools();
         }
 
         /// <summary>
@@ -58,15 +48,18 @@ namespace FFvideoConverter
         /// </summary>
         /// <param name="WindowHWND">主窗口句柄</param>
         /// <returns>文件路径</returns>
-        [JsObjectType(JsObjectType.MethodType.Sync, true)]
-        public string OpenFile(IWin32Window WindowHWND)
+        [JsObjectType(JsObjectType.MethodType.Sync)]
+        public string? OpenFile()
         {
-            var file = new OpenFileDialog();
-            file.Filter = "video|*.mp4;*.mkv;*.ts;*.mov;*.avi;*.mpeg;*.wmv;*.rmvb";
-            if (file.ShowDialog(WindowHWND) == DialogResult.OK)
-                return file.FileName;
-            else
-                return null;
+            string ret = null;
+            InvokeIfRequired(() =>
+            {
+                var file = new OpenFileDialog();
+                file.Filter = "video|*.mp4;*.mkv;*.ts;*.mov;*.avi;*.mpeg;*.wmv;*.rmvb";
+                if (file.ShowDialog(WindowHWND) == DialogResult.OK)
+                    ret =  file.FileName;
+            });
+            return ret;
         }
 
         /// <summary>
@@ -74,14 +67,17 @@ namespace FFvideoConverter
         /// </summary>
         /// <param name="WindowHWND">主窗口句柄</param>
         /// <returns>文件夹路径</returns>
-        [JsObjectType(JsObjectType.MethodType.Sync, true)]
-        public string FolderBrowser(IWin32Window WindowHWND)
+        [JsObjectType(JsObjectType.MethodType.Sync)]
+        public string FolderBrowser()
         {
-            var path = new FolderBrowserDialog();
-            if (path.ShowDialog(WindowHWND) == DialogResult.OK)
-                return path.SelectedPath;
-            else
-                return null;
+            string ret = null;
+            InvokeIfRequired(() =>
+            {
+                var path = new FolderBrowserDialog();
+                if (path.ShowDialog(WindowHWND) == DialogResult.OK)
+                    ret = path.SelectedPath;
+            });
+            return ret;
         }
 
         /// <summary>
@@ -124,6 +120,12 @@ namespace FFvideoConverter
         {
             _ffmpeg.CancelConvert();
             _ffmpeg.ConvertProgress = 0;
+        }
+
+        [JsObjectType(JsObjectType.MethodType.Sync)]
+        public void TestJavaScript(string msg)
+        {
+            ExecuteJavaScript($"window.vue.MessageShow('js执行测试', '{msg}')");
         }
         #endregion
     }

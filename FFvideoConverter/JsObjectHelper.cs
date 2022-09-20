@@ -34,10 +34,14 @@ namespace FFvideoConverter
         /// </summary>
         /// <param name="name">注册的名称</param>
         /// <param name="registerObj">要注册的对象</param>
-        public void Register<T>(string name, T registerObj)
+        public void Register(string name, JsSharpModel registerObj)
         {
+            // 为对象基类设置窗体对象
+            registerObj.SetMainWindow(_formium);
+            // 创建要注册的js对象
             var jsObj = new JavaScriptObject();
-            Type jsObjType = typeof(T);
+            // 获取对象所有成员
+            Type jsObjType = registerObj.GetType();
             MemberInfo[] members = jsObjType.GetMembers();
             foreach(var member in members)
             {
@@ -108,24 +112,11 @@ namespace FFvideoConverter
                         // 注册同步方法
                         jsObj.Add(memberName, args =>
                         {
-                            object? ret = null;
                             // 转换参数
                             object[] parameters = ParamesToObjectArry(method.GetParameters(), args);
-                            if (parameters == null) throw new Exception("参数错误");
+                            if (parameters == null) throw new Exception($"{memberName} 参数错误");
                             //if (parameters == null) return new JavaScriptValue("参数错误");
-
-                            if (memberAttr.UsedWindowHwnd)  // 使用窗口句柄
-                            {
-                                _formium.InvokeIfRequired(() =>
-                                {
-                                    ret = method.Invoke(registerObj, parameters);
-                                });
-                            }
-                            else
-                            {
-                                ret = method.Invoke(registerObj, parameters);
-                            }
-
+                            object? ret = method.Invoke(registerObj, parameters);
                             var val = ObjectToJsVal(returnType, ret);
                             if (val != null) return val;
                             else return new JavaScriptValue();
@@ -232,9 +223,9 @@ namespace FFvideoConverter
             List<object> result = new();
             for (int i = 0; i < argsInfo.Length; i++)
             {
-                //string argType = argsInfo[i].ParameterType.Name.ToLower();
                 var argType = ToolHelper.TypeToEnum<JsDataType>(argsInfo[i].ParameterType);
                 // 验证参数
+                if(argsInfo.Length > args.Count) return null;
                 switch (argType)
                 {
                     case JsDataType.Object:
@@ -280,8 +271,6 @@ namespace FFvideoConverter
                         result.Add(args[i].ToArray()); break;
                     case JsDataType.JavaScriptJsonValue:
                         result.Add(args[i].ToJsonVaue()); break;
-                    case JsDataType.IWin32Window:
-                        result.Add(_formium.WindowHWND); break;
                     default:
                         return null;
                 }
