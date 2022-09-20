@@ -5,8 +5,9 @@
     /// </summary>
     public enum JsDataType
     {
+        Object,
         String,
-        Bool,
+        Boolean,
         Int16,
         UInt16,
         Int32,
@@ -18,6 +19,7 @@
         DateTime,
         JavaScriptArray,
         JavaScriptValue,
+        JavaScriptJsonValue,
         JavaScriptObject,
         IWin32Window
     }

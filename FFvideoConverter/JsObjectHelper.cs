@@ -87,7 +87,11 @@ namespace FFvideoConverter
                         if (member.MemberType == MemberTypes.Property)
                             jsObj.DefineProperty(memberName,
                             () => ObjectToJsVal(memberType, prop.GetValue(registerObj)),
-                            (val) => prop.SetValue(registerObj, JsValToObject(memberType, val)));
+                            (val) =>
+                            {
+                                _formium.InvokeIfRequired(() => prop.SetValue(registerObj, JsValToObject(memberType, val)));
+                                //prop.SetValue(registerObj, JsValToObject(memberType, val));
+                            });
                         else
                             jsObj.DefineProperty(memberName,
                             () => ObjectToJsVal(memberType, field.GetValue(registerObj)),
@@ -138,21 +142,25 @@ namespace FFvideoConverter
                                 promise.Reject("参数错误");
                                 return;
                             }
-                            var ret = await Task.Run(() =>
+                            await Task.Run(() =>
                             {
-                                return method.Invoke(registerObj, ParamesToObjectArry(method.GetParameters(), args));
+                                try
+                                {
+                                    var ret = method.Invoke(registerObj, ParamesToObjectArry(method.GetParameters(), args));
+                                    var val = ObjectToJsVal(returnType, ret);
+                                    if (val == null)
+                                        promise.Reject("返回值错误！");
+                                    else
+                                        promise.Resovle(val);
+                                }
+                                catch(Exception ex)
+                                {
+                                    if(ex.InnerException == null)
+                                        promise.Reject(ex.Message);
+                                    else
+                                        promise.Reject(ex.InnerException?.Message);
+                                }
                             });
-                            if(returnType.Name.ToLower() == "void")
-                            {
-                                promise.Resovle();
-                                return;
-                            }
-                                
-                            var val = ObjectToJsVal(returnType, ret);
-                            if (val != null) 
-                                promise.Resovle(val);
-                            else 
-                                promise.Reject("方法失败");
                         });
                     }
                 }
@@ -173,8 +181,9 @@ namespace FFvideoConverter
             var dateType = ToolHelper.TypeToEnum<JsDataType>(type);
             return dateType switch
             {
+                JsDataType.Object => (JavaScriptObject)val,
                 JsDataType.String => new JavaScriptValue((string)val),
-                JsDataType.Bool => new JavaScriptValue((bool)val),
+                JsDataType.Boolean => new JavaScriptValue((bool)val),
                 JsDataType.Int16 => new JavaScriptValue((short)val),
                 JsDataType.Int32 => new JavaScriptValue((int)val),
                 JsDataType.Int64 => new JavaScriptValue((long)val),
@@ -199,7 +208,7 @@ namespace FFvideoConverter
             return dateType switch
             {
                 JsDataType.String => val.GetString(),
-                JsDataType.Bool => val.GetBool(),
+                JsDataType.Boolean => val.GetBool(),
                 JsDataType.Int16 => Convert.ToInt16(val.GetInt()),
                 JsDataType.Int32 => val.GetInt(),
                 JsDataType.Int64 => Convert.ToInt64(val.GetInt()),
@@ -228,9 +237,11 @@ namespace FFvideoConverter
                 // 验证参数
                 switch (argType)
                 {
+                    case JsDataType.Object:
+                        if (!args[i].IsObject) return null; break;
                     case JsDataType.String:
                         if(!args[i].IsString) return null; break;
-                    case JsDataType.Bool:
+                    case JsDataType.Boolean:
                         if (!args[i].IsBool) return null; break;
                     case JsDataType.Int16:
                     case JsDataType.Int32:
@@ -246,36 +257,31 @@ namespace FFvideoConverter
                 // 转换参数
                 switch (argType)
                 {
+                    case JsDataType.Object:
+                    case JsDataType.JavaScriptValue:
+                        result.Add(args[i]); break;
                     case JsDataType.String:
-                        result.Add(args[i].GetString());
-                        break;
-                    case JsDataType.Bool:
-                        result.Add(args[i].GetBool());
-                        break;
+                        result.Add(args[i].GetString()); break;
+                    case JsDataType.Boolean:
+                        result.Add(args[i].GetBool()); break;
                     case JsDataType.Int16:
-                        result.Add(Convert.ToInt16(args[i].GetInt()));
-                        break;
+                        result.Add(Convert.ToInt16(args[i].GetInt())); break;
                     case JsDataType.Int32:
-                        result.Add(args[i].GetInt());
-                        break;
+                        result.Add(args[i].GetInt()); break;
                     case JsDataType.Int64:
-                        result.Add(Convert.ToInt64(args[i].GetInt()));
-                        break;
+                        result.Add(Convert.ToInt64(args[i].GetInt())); break;
                     case JsDataType.Single:
-                        result.Add(Convert.ToSingle(args[i].GetDouble()));
-                        break;
+                        result.Add(Convert.ToSingle(args[i].GetDouble())); break;
                     case JsDataType.Double:
-                        result.Add(args[i].GetDouble());
-                        break;
+                        result.Add(args[i].GetDouble()); break;
                     case JsDataType.DateTime:
-                        result.Add(args[i].GetDateTime());
-                        break;
+                        result.Add(args[i].GetDateTime()); break;
                     case JsDataType.JavaScriptArray:
-                        result.Add(args[i].ToArray());
-                        break;
+                        result.Add(args[i].ToArray()); break;
+                    case JsDataType.JavaScriptJsonValue:
+                        result.Add(args[i].ToJsonVaue()); break;
                     case JsDataType.IWin32Window:
-                        result.Add(_formium.WindowHWND);
-                        break;
+                        result.Add(_formium.WindowHWND); break;
                     default:
                         return null;
                 }

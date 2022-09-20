@@ -82,15 +82,19 @@
         </el-col>
     </el-row>
 
-    <el-dialog v-model="showMediaInfo" title="媒体信息" width="60%" top="50px">
-        <el-row class="tabBarArea">
-            <el-col v-for="(item, index) in mediaInfo" :span="8">
-                <div class="tabBarBtn" :class="[tabName == index ? 'tabBarBtnActive' : '']" @click="tabName = index">{{item.label}}
-                </div>
-            </el-col>
-        </el-row>
-        <el-input v-model="mediaInfo[tabName].content" type="textarea" :rows="18" resize="none" wrap="off" readonly
-            placeholder="没有有效数据！" />
+    <el-dialog v-model="showMediaInfo" title="媒体信息" width="60%" top="50px" @open="onDialogOpen">
+        <div v-loading="showMediaLoading" 
+            element-loading-text="正在加载媒体数据..."
+            element-loading-background="rgba(122, 122, 122, 0.8)">
+            <el-row class="tabBarArea">
+                <el-col v-for="(item, index) in mediaInfo" :span="8">
+                    <div class="tabBarBtn" :class="[tabName == index ? 'tabBarBtnActive' : '']" @click="tabName = index">{{item.label}}
+                    </div>
+                </el-col>
+            </el-row>
+            <el-input v-model="mediaInfo[tabName].content" type="textarea" :rows="18" resize="none" wrap="off" readonly
+                placeholder="没有有效数据！" />
+        </div>
     </el-dialog>
 </template>
 
@@ -159,6 +163,10 @@
     border-width: 1px;
     border-color: #dcdfe6;
 }
+
+.el-message-box {
+    width: 250px;
+}
 </style>
 
 <script setup>
@@ -176,6 +184,7 @@ const videoCopy = ref(true)
 const audioCopy = ref(true)
 const startConvert = ref(false)
 const showMediaInfo = ref(false)
+const showMediaLoading = ref(false)
 const tabName = ref('video')
 const mediaInfo = ref({
     video: {
@@ -232,27 +241,36 @@ watch(videoType, (newType, oldType) => {
 
 
 /* method *************************************************/
-const onOpenFile = () => {      // 打开文件
-    new Promise(Formium.external.SharpObject.OpenFile())
+const onDialogOpen = () => {    // 媒体信息弹窗打开
+    showMediaLoading.value = true
+    new Promise(Formium.external.SharpObject.GetMediaInfo(inputFile.value))
         .then(ret => {
-            inputFile.value = ret[0]
-            mediaInfo.value.video.content = ret[1]
-            mediaInfo.value.audio.content = ret[2]
-            mediaInfo.value.subtitle.content = ret[3]
+            mediaInfo.value.video.content = ret[0]
+            mediaInfo.value.audio.content = ret[1]
+            mediaInfo.value.subtitle.content = ret[2]
+            showMediaLoading.value = false
         })
         .catch(err => {
             console.log(err)
+            ElMessageBox.alert(err, '错误', {
+                type: 'error',
+                confirmButtonText: '确认',
+                callback: () => {
+                    showMediaLoading.value = false
+                    showMediaInfo.value = false
+                },
+            })
         })
 }
 
+const onOpenFile = () => {      // 打开文件
+    var filePath = Formium.external.SharpObject.OpenFile()
+    if(filePath != undefined) inputFile.value = filePath
+}
+
 const onFolderBrowser = () => {     // 打开文件夹
-    new Promise(Formium.external.SharpObject.FolderBrowser())
-        .then(ret => {
-            outputPath.value = ret
-        })
-        .catch(err => {
-            console.log(err)
-        })
+    var path = Formium.external.SharpObject.FolderBrowser()
+    if(path != undefined) outputPath.value = path
 }
 
 const onStartConvert = () => {      // 开始转换
@@ -277,7 +295,7 @@ const onStartConvert = () => {      // 开始转换
     else if (videoCopy.value) copyType = 'Video'
     else if (audioCopy.value) copyType = 'Audio'
 
-    let config = {
+    var config = {
         InputFile: inputFile.value,
         OutputPath: outputPath.value,
         OutType: videoType.value,
@@ -292,13 +310,21 @@ const onStartConvert = () => {      // 开始转换
     startConvert.value = true
     new Promise(Formium.external.SharpObject.StartConvert(JSON.stringify(config)))
         .then(ret => {
-            ElMessageBox.alert(ret, '提示', {
-                confirmButtonText: '确认',
-                callback: (action) => {
-                    Formium.external.SharpObject.Progress = 0
-                },
+            if(ret == true) {
+                ElMessageBox.alert('转码成功', '提示', {
+                    confirmButtonText: '确认',
+                    callback: (action) => {
+                        Formium.external.SharpObject.Progress = 0
+                    },
+                })
+                startConvert.value = false
+            }
+            else {
+                ElMessage({
+                message: '转码失败',
+                type: 'error',
             })
-            startConvert.value = false
+            }
         })
         .catch(err => {
             console.log(err)
