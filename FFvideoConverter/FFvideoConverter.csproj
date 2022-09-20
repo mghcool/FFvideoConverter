@@ -63,7 +63,7 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="if &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;cd $(SolutionDir)WebCode&#xD;&#xA;npm run build&#xD;&#xA;ping -n 1 127.0.0.1&gt;nul&#xD;&#xA;rd /s /q $(ProjectDir)www&#xD;&#xA;xcopy $(SolutionDir)WebCode\dist  $(ProjectDir)www  /s/e/i/y&#xD;&#xA;ping -n 1 127.0.0.1&gt;nul&#xD;&#xA;)&#xD;&#xA;" />
+    <Exec Command="if &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;cd $(SolutionDir)WebCode&#xD;&#xA;npm run build&#xD;&#xA;ping -n 1 127.0.0.1&gt;nul&#xD;&#xA;rd /s /q $(ProjectDir)www&#xD;&#xA;ping -n 1 127.0.0.1&gt;nul&#xD;&#xA;xcopy $(SolutionDir)WebCode\dist  $(ProjectDir)www  /s/e/i/y&#xD;&#xA;ping -n 1 127.0.0.1&gt;nul&#xD;&#xA;)&#xD;&#xA;" />
   </Target>
 
 </Project>
