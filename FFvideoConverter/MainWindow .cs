@@ -1,11 +1,10 @@
-﻿using FFvideoConverter.Model;
-using NetDimension.NanUI;
+﻿using NetDimension.NanUI;
 using NetDimension.NanUI.HostWindow;
-using NetDimension.NanUI.JavaScript;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using NetDimension.NanUI.Browser;
 using System.Diagnostics;
-using System.Reflection;
+using System.Xml.Linq;
+using FFvideoConverter.Model;
+using System.Linq;
 
 namespace FFvideoConverter
 {
@@ -45,7 +44,7 @@ namespace FFvideoConverter
             // 设置标签
             var label = new Label
             {
-                Text = "正在启动...",
+                Text = "正在启动FF视频转换器...",
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Anchor = AnchorStyles.None,

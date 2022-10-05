@@ -2,7 +2,7 @@
     <br />
     <el-row :gutter="15">
         <el-col :span="20">
-            <el-input v-model="inputFile" placeholder="选择视频文件" readonly />
+            <el-input class="inputFileStyle" v-model="inputFile" placeholder="选择视频文件或将文件拖放到这里" @drop.native="inputOndrop" readonly />
         </el-col>
         <el-col :span="4" style="text-align: center;">
             <el-button type="primary" icon="VideoCamera" @click="onOpenFile">选择视频文件</el-button>
@@ -175,7 +175,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 
 /* data *************************************************/
 const inputFile = ref('')
-const outputPath = ref('')
+const outputPath = ref(Formium.external.SharpObject.DesktopPath)
 const videoTypeList = ref(Formium.external.SharpObject.OutputTypes)
 const videoType = ref(videoTypeList.value[0])
 const videoCopyDisabled = ref(false)
@@ -249,6 +249,16 @@ watch(videoType, (newType, oldType) => {
 
 
 /* method *************************************************/
+// 文件拖动事件
+const inputOndrop = (e) => {
+    e.preventDefault()
+    inputFile.value = Formium.external.SharpObject.DropFilePath
+    console.log(e.path)
+    if(inputFile.value === '') {
+        window.vue.MessageShow("提示", "不支持的文件类型！")
+    }
+}
+
 const onDialogOpen = () => {    // 媒体信息弹窗打开
     showMediaLoading.value = true
     new Promise(Formium.external.SharpObject.GetMediaInfo(inputFile.value))

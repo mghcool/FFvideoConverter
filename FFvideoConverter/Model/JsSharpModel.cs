@@ -4,6 +4,7 @@
  * C#方法返回Js对象时，返回值应是 JavaScriptJsonValue 类型
  * **************************************************************************/
 using NetDimension.NanUI;
+using NetDimension.NanUI.Browser;
 using NetDimension.NanUI.JavaScript;
 using Xilium.CefGlue;
 
@@ -23,6 +24,7 @@ namespace FFvideoConverter.Model
         public void SetMainWindow(Formium formium)
         {
             _formium = formium;
+            _formium.DragEnter += (object? sender, DragEnterEventArgs e) => { DragEvent(e); };
         }
 
         /// <summary>
@@ -61,5 +63,11 @@ namespace FFvideoConverter.Model
         /// <param name="code"></param>
         /// <returns></returns>
         public async Task<JavaScriptExecutionResult> EvaluateJavaScriptAsync(CefFrame frame, string code) => await _formium.EvaluateJavaScriptAsync(frame, code);
+
+        /// <summary>
+        /// 文件拖放时触发
+        /// </summary>
+        /// <param name="e">拖放参数</param>
+        protected virtual void DragEvent(DragEnterEventArgs e) { }
     }
 }

@@ -34,7 +34,7 @@ $height-footer: 35px;   // 底栏高度
     background-color: #545C64;
     height: $height-head;
     padding: 0px;
-    -webkit-app-region: no-drag; //nanui可拖动
+    -webkit-app-region: drag; //nanui可拖动
 }
 
 .main {
@@ -69,4 +69,14 @@ $height-footer: 35px;   // 底栏高度
 import ConvertProgress  from '@/components/ConvertProgress.vue'
 //document.ondragstart = function () { return false; }; //禁用拖动
 //document.onselectstart = function () { return false; }; //禁用文字选中
+</script>
+<script>
+// 处理掉默认的文件拖动处理
+document.ondragover = function (e) {
+    e.preventDefault();
+    return false
+}
+document.ondrop = function (e) {
+    e.preventDefault()
+}
 </script>

@@ -13,5 +13,6 @@ namespace FFvideoConverter.Model
     public static class Settings
     {
         public static JavaScriptArray OutputTypes = new () { "MP4", "AVI", "MPEG", "MOV", "MKV", "3GP", "WMV", "FLV", "MPG", "AV1", "OGV", "MP3" };
+        public static string[] InputTypes = new string[] { "MP4", "AVI", "MPEG", "MOV", "MKV", "3GP", "WMV", "FLV", "MPG", "AV1", "OGV", "TS" };
     }
 }

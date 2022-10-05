@@ -1,10 +1,12 @@
 ﻿using FFvideoConverter.Model;
 using NetDimension.NanUI;
+using NetDimension.NanUI.Browser;
 using NetDimension.NanUI.JavaScript;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -32,6 +34,18 @@ namespace FFvideoConverter
             get { return _ffmpeg.ConvertProgress; }
             set { _ffmpeg.ConvertProgress = value; }
         }
+
+        /// <summary>
+        /// 桌面文件路径
+        /// </summary>
+        [JsObjectType(JsObjectType.PropertieType.ReadOnly)]
+        public string DesktopPath => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+
+        /// <summary>
+        /// 拖放的文件路径
+        /// </summary>
+        [JsObjectType(JsObjectType.PropertieType.ReadOnly)]
+        public string DropFilePath { get; private set; }
         #endregion
 
         #region 注册的方法
@@ -56,7 +70,12 @@ namespace FFvideoConverter
             InvokeIfRequired(() =>
             {
                 var file = new OpenFileDialog();
-                file.Filter = "video|*.mp4;*.mkv;*.ts;*.mov;*.avi;*.mpeg;*.wmv;*.rmvb";
+                string filterStr = "video|";
+                foreach(string str in Settings.InputTypes)
+                {
+                    filterStr += $"*.{str.ToLower()};";
+                }
+                file.Filter = filterStr;
                 if (file.ShowDialog(WindowHWND) == DialogResult.OK)
                     ret =  file.FileName;
             });
@@ -153,5 +172,35 @@ namespace FFvideoConverter
             ExecuteJavaScript($"window.vue.MessageShow('js执行测试', '{msg}')");
         }
         #endregion
+
+        /// <summary>
+        /// 文件拖放时触发
+        /// </summary>
+        /// <param name="e">拖放参数</param>
+        protected override void DragEvent(DragEnterEventArgs e)
+        {
+            e.Handled = true;
+            if (!e.DragData.IsFile) return;
+
+            string[] draggedFiles = e.DragData.GetFileNames();
+            if ((draggedFiles?.Length ?? 0) > 0)
+            {
+                e.Handled = false;
+                string filePath = draggedFiles[0];
+                Debug.WriteLine(filePath);
+                if (File.Exists(filePath))
+                {
+                    string extensionName = Path.GetExtension(filePath).Replace(".", "");
+                    if (Settings.InputTypes.Contains(extensionName.ToUpper()))
+                        DropFilePath = filePath;
+                    else
+                        DropFilePath = "";
+                }
+                else
+                {
+                    DropFilePath = "";
+                }
+            }
+        }
     }
 }
