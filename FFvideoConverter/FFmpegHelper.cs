@@ -178,7 +178,8 @@ namespace FFvideoConverter
         public bool Convert(FFConvertConfig config)
         {
             if (config.InputFile == string.Empty || config.OutputPath == string.Empty) return false;
-            string outFilename = $"{Path.GetFileNameWithoutExtension(config.InputFile)}.{config.OutType.ToLower()}";
+            string inputFileName = Path.GetFileNameWithoutExtension(config.InputFile);
+            string outFilename = $"{inputFileName}-{DateTime.Now:yyMMddHHmmss}.{config.OutType.ToLower()}"; 
             string outputFile = Path.Combine(config.OutputPath, outFilename);
             try
             {
